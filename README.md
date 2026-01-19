@@ -228,21 +228,6 @@ npx tsc --noEmit
 npm run build:docker
 ```
 
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl + K` | Focus search |
-| `Cmd/Ctrl + N` | Create new agent |
-| `?` | Show shortcuts help |
-| `Esc` | Clear search / Close dialogs |
-| `Enter` | Send message |
-| `Shift + Enter` | New line |
-
-## License
-
-[MIT License](LICENSE)
-
 ## Resources
 
 - [Claude Agent SDK Documentation](https://docs.anthropic.com/en/docs/claude-agent-sdk)
