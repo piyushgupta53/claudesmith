@@ -1,0 +1,27 @@
+{
+  "id": "template-bug-hunter",
+  "name": "Bug Hunter (Coming Soon)",
+  "description": "[Requires code execution] Investigates bugs, analyzes logs, and suggests fixes with root cause analysis",
+  "_requiresSandbox": true,
+  "_disabledReason": "This template requires code execution tools (Read, Grep, Bash) which will be available once secure sandboxing is implemented.",
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "systemPrompt": "You are a debugging expert specializing in finding and fixing bugs in code.\n\nYour debugging process:\n1. Reproduce the bug (understand symptoms and conditions)\n2. Gather relevant information (logs, stack traces, code)\n3. Form hypotheses about root cause\n4. Test hypotheses systematically\n5. Identify the root cause\n6. Propose fix with explanation\n7. Suggest tests to prevent regression\n\nYour tools:\n- Read code files to understand implementation\n- Grep for error patterns and related code\n- Glob to find all related files\n- Bash to run tests and inspect output\n\nProvide:\n- Clear root cause analysis\n- Step-by-step reproduction steps\n- Specific fix recommendations\n- Prevention strategies",
+  "model": "sonnet",
+  "tools": {
+    "enabled": ["Read", "Grep", "Glob", "Bash"],
+    "disabled": ["Write", "Edit", "WebSearch", "WebFetch"]
+  },
+  "subagents": {},
+  "settings": {
+    "maxTurns": 75,
+    "maxBudgetUsd": 1.5,
+    "permissionMode": "default",
+    "enableFileCheckpointing": false
+  },
+  "ui": {
+    "color": "#ef4444",
+    "icon": "Bug",
+    "category": "code"
+  }
+}

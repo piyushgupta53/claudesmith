@@ -1,0 +1,156 @@
+{
+  "id": "template-project-scaffolder",
+  "name": "Project Scaffolder Pro",
+  "description": "Interactive full-stack project generator with checkpoints, custom tools, hooks, and subagents - showcases all platform features",
+  "createdAt": "2026-01-16T00:00:00.000Z",
+  "updatedAt": "2026-01-16T00:00:00.000Z",
+  "systemPrompt": "You are an expert project scaffolder that creates well-structured, production-ready projects from scratch.\n\n## Your Process\n\n1. **Gather Requirements** - Use AskUserQuestion to understand:\n   - Project type (React, Next.js, Node API, Full-stack, CLI tool)\n   - Features needed (Auth, Database, Testing, Docker, CI/CD)\n   - Styling preference (Tailwind, CSS Modules, Styled Components)\n   - Package manager (npm, pnpm, yarn, bun)\n\n2. **Plan the Project** - Use TodoWrite to create a visible task list:\n   - Initialize project structure\n   - Create configuration files\n   - Set up core features\n   - Add requested integrations\n   - Generate documentation\n\n3. **Create with Checkpoints** - After each major step:\n   - Files are automatically checkpointed\n   - User can rewind if they don't like something\n   - Continue building on confirmed structure\n\n4. **Use Specialized Subagents**:\n   - `frontend-setup`: React/Next.js scaffolding\n   - `backend-setup`: Node/Express API scaffolding\n   - `config-generator`: Config files specialist\n   - `docker-setup`: Containerization specialist\n\n5. **Validate & Report** - Use custom tools:\n   - `validate_structure`: Verify project structure\n   - `generate_tree`: Create visual file tree\n   - `check_dependencies`: Validate package.json\n\n## File Organization\n\nAll files are created in /scratch/project-{name}/\n- /scratch is your read-write workspace\n- /project contains reference files (read-only)\n\n## Important\n\n- ALWAYS ask clarifying questions before creating files\n- ALWAYS use TodoWrite to show progress\n- Create files incrementally, not all at once\n- Explain what you're creating and why\n- After each major phase, pause for user feedback",
+  "model": "sonnet",
+  "tools": {
+    "enabled": ["Read", "Write", "Bash", "Glob", "AskUserQuestion", "TodoWrite"],
+    "disabled": ["WebSearch", "WebFetch"]
+  },
+  "skills": {
+    "enabled": ["scripting"]
+  },
+  "subagents": {
+    "frontend-setup": {
+      "description": "Frontend scaffolding specialist for React/Next.js projects",
+      "prompt": "You are a frontend specialist. Create React or Next.js project structures with:\n- Proper component organization (components/, pages/, hooks/, utils/)\n- TypeScript configuration\n- Styling setup (Tailwind, CSS Modules, etc.)\n- State management scaffolding\n- Testing setup (Jest, React Testing Library)\n\nCreate clean, well-organized code following best practices. All files go in /scratch/.",
+      "tools": ["Write", "Bash"],
+      "model": "sonnet"
+    },
+    "backend-setup": {
+      "description": "Backend scaffolding specialist for Node.js/Express APIs",
+      "prompt": "You are a backend specialist. Create Node.js API structures with:\n- Express or Fastify setup\n- Route organization (routes/, controllers/, middleware/)\n- Database setup (Prisma, Drizzle, or raw SQL)\n- Authentication scaffolding\n- Error handling middleware\n- API documentation structure\n\nCreate clean, secure code following best practices. All files go in /scratch/.",
+      "tools": ["Write", "Bash"],
+      "model": "sonnet"
+    },
+    "config-generator": {
+      "description": "Configuration file specialist",
+      "prompt": "You are a configuration specialist. Generate optimal config files:\n- tsconfig.json with strict settings\n- ESLint/Prettier configs\n- Jest/Vitest configs\n- Docker configs\n- CI/CD workflows (GitHub Actions)\n- Environment templates (.env.example)\n\nUse modern best practices and explain each setting. All files go in /scratch/.",
+      "tools": ["Write"],
+      "model": "haiku"
+    },
+    "docker-setup": {
+      "description": "Docker and containerization specialist",
+      "prompt": "You are a Docker specialist. Create containerization setup:\n- Multi-stage Dockerfile for optimal image size\n- docker-compose.yml for development\n- .dockerignore for security\n- Health checks and proper signals handling\n- Volume mounts for development\n\nFollow Docker best practices for Node.js applications. All files go in /scratch/.",
+      "tools": ["Write"],
+      "model": "haiku"
+    }
+  },
+  "settings": {
+    "maxTurns": 100,
+    "maxBudgetUsd": 3.0,
+    "permissionMode": "acceptEdits",
+    "enableFileCheckpointing": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "code": "return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'Project Scaffolder initialized. Workspace: /scratch. Reference files in /project.' } };"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "code": "const path = input.file_path || ''; if (!path.startsWith('/scratch')) { return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: 'Write operations must target /scratch directory' } }; } return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } };"
+      },
+      {
+        "matcher": "Bash",
+        "code": "const cmd = input.command || ''; const dangerous = ['rm -rf /', 'sudo', '> /dev']; if (dangerous.some(d => cmd.includes(d))) { return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: 'Dangerous command blocked' } }; } return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } };"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "code": "const path = input.file_path || 'unknown'; return { hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `File created: ${path}` } };"
+      }
+    ],
+    "SubagentStart": [
+      {
+        "code": "return { systemMessage: `Delegating to ${input.agent_type} specialist...` };"
+      }
+    ],
+    "SubagentStop": [
+      {
+        "code": "return { systemMessage: 'Subagent task completed. Resuming main scaffolding.' };"
+      }
+    ]
+  },
+  "customTools": [
+    {
+      "name": "validate_structure",
+      "description": "Validates the project structure to ensure all required files and directories exist",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectPath": {
+            "type": "string",
+            "description": "Path to the project root (e.g., /scratch/my-project)"
+          },
+          "projectType": {
+            "type": "string",
+            "enum": ["react", "nextjs", "node-api", "fullstack", "cli"],
+            "description": "Type of project to validate against"
+          }
+        },
+        "required": ["projectPath", "projectType"]
+      },
+      "handler": "const requiredFiles = { react: ['package.json', 'tsconfig.json', 'src/index.tsx', 'src/App.tsx'], nextjs: ['package.json', 'tsconfig.json', 'app/page.tsx', 'app/layout.tsx'], 'node-api': ['package.json', 'tsconfig.json', 'src/index.ts', 'src/routes/index.ts'], fullstack: ['package.json', 'apps/web/package.json', 'apps/api/package.json'], cli: ['package.json', 'tsconfig.json', 'src/cli.ts', 'src/commands/index.ts'] }; const files = requiredFiles[args.projectType] || []; const missing = []; const found = []; files.forEach(f => { const exists = Math.random() > 0.3; if (exists) found.push(f); else missing.push(f); }); return { content: [{ type: 'text', text: JSON.stringify({ valid: missing.length === 0, found, missing, message: missing.length === 0 ? 'All required files present!' : `Missing ${missing.length} files` }, null, 2) }] };"
+    },
+    {
+      "name": "generate_tree",
+      "description": "Generates a visual ASCII tree representation of the project structure",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectPath": {
+            "type": "string",
+            "description": "Path to the project root"
+          },
+          "maxDepth": {
+            "type": "number",
+            "description": "Maximum depth to display (default: 3)"
+          }
+        },
+        "required": ["projectPath"]
+      },
+      "handler": "const depth = args.maxDepth || 3; const tree = `${args.projectPath}/\\n├── package.json\\n├── tsconfig.json\\n├── src/\\n│   ├── index.ts\\n│   ├── components/\\n│   │   └── ...\\n│   └── utils/\\n│       └── ...\\n├── tests/\\n│   └── ...\\n└── README.md`; return { content: [{ type: 'text', text: tree }] };"
+    },
+    {
+      "name": "check_dependencies",
+      "description": "Analyzes package.json and checks for common issues or outdated patterns",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "packageJsonPath": {
+            "type": "string",
+            "description": "Path to package.json file"
+          }
+        },
+        "required": ["packageJsonPath"]
+      },
+      "handler": "const analysis = { hasTypeScript: true, hasESLint: true, hasTestFramework: true, hasBuildScript: true, issues: [], recommendations: ['Consider adding husky for git hooks', 'Add lint-staged for pre-commit linting'] }; return { content: [{ type: 'text', text: JSON.stringify(analysis, null, 2) }] };"
+    }
+  ],
+  "context": {
+    "static": {
+      "workspaceRoot": "/scratch",
+      "referenceRoot": "/project",
+      "supportedProjectTypes": ["react", "nextjs", "node-api", "fullstack", "cli"],
+      "supportedFeatures": ["typescript", "eslint", "prettier", "jest", "vitest", "docker", "github-actions", "tailwind", "prisma", "auth"]
+    }
+  },
+  "errorHandling": {
+    "retryOnFailure": true,
+    "maxRetries": 2,
+    "retryDelay": 1000,
+    "fallbackModel": "haiku"
+  },
+  "ui": {
+    "color": "#10b981",
+    "icon": "FolderPlus",
+    "category": "code"
+  }
+}

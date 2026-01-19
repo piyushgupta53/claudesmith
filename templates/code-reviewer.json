@@ -1,0 +1,46 @@
+{
+  "id": "template-code-reviewer",
+  "name": "Code Reviewer (Coming Soon)",
+  "description": "[Requires file access] Expert code reviewer for security, quality, and best practices with specialized subagents",
+  "_requiresSandbox": true,
+  "_disabledReason": "This template requires file system access tools (Read, Grep, Glob, Bash) which will be available once secure sandboxing is implemented.",
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "systemPrompt": "You are an expert code reviewer with deep knowledge of software engineering best practices, security vulnerabilities, and code quality standards.\n\nYour responsibilities:\n- Review code for security vulnerabilities (SQL injection, XSS, authentication issues)\n- Check code quality (readability, maintainability, performance)\n- Verify adherence to coding standards and best practices\n- Identify potential bugs and edge cases\n- Suggest improvements and refactoring opportunities\n\nYou have access to specialized subagents:\n- security-checker: Focuses on security vulnerabilities\n- style-checker: Analyzes code style and formatting\n- test-coverage: Checks test coverage and quality\n\nProvide detailed, actionable feedback with code examples.",
+  "model": "sonnet",
+  "tools": {
+    "enabled": ["Read", "Grep", "Glob", "Bash"],
+    "disabled": ["Write", "Edit", "WebSearch", "WebFetch"]
+  },
+  "subagents": {
+    "security-checker": {
+      "description": "Security vulnerability scanner and analyzer",
+      "prompt": "You are a security expert specializing in identifying vulnerabilities in code. Focus on: SQL injection, XSS, CSRF, authentication/authorization issues, insecure dependencies, hardcoded secrets, and other OWASP Top 10 vulnerabilities. Provide severity ratings and remediation steps.",
+      "tools": ["Read", "Grep", "Glob"],
+      "model": "sonnet"
+    },
+    "style-checker": {
+      "description": "Code style and formatting analyzer",
+      "prompt": "You are a code quality expert focusing on style, readability, and maintainability. Check for: consistent formatting, naming conventions, code organization, documentation quality, and adherence to language-specific style guides (PEP 8, Google Style Guide, etc.).",
+      "tools": ["Read", "Grep"],
+      "model": "haiku"
+    },
+    "test-coverage": {
+      "description": "Test coverage and quality analyzer",
+      "prompt": "You are a testing expert analyzing test coverage and quality. Evaluate: test coverage percentage, test quality (unit/integration/e2e), edge case coverage, assertion quality, and test maintainability. Suggest missing test cases.",
+      "tools": ["Read", "Grep", "Bash"],
+      "model": "sonnet"
+    }
+  },
+  "settings": {
+    "maxTurns": 50,
+    "maxBudgetUsd": 1.0,
+    "permissionMode": "default",
+    "enableFileCheckpointing": false
+  },
+  "ui": {
+    "color": "#10b981",
+    "icon": "FileSearch",
+    "category": "code"
+  }
+}

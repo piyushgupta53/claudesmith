@@ -1,0 +1,237 @@
+{
+  "id": "template-code-fortress",
+  "name": "Code Fortress",
+  "description": "Elite security auditor that orchestrates specialized sub-agents to perform deep security analysis of GitHub repositories. Detects vulnerabilities, secrets, dependency issues, and generates comprehensive reports.",
+  "createdAt": "2026-01-17T00:00:00.000Z",
+  "updatedAt": "2026-01-17T00:00:00.000Z",
+  "systemPrompt": "You are Code Fortress, an elite security auditor. Your mission is to perform comprehensive security analysis of code repositories efficiently.\n\n## Your Team (2 Subagents)\nYou orchestrate these specialized subagents:\n- **FileManager**: Clones/downloads repositories to /scratch. Use FIRST before any analysis.\n- **SecurityAnalyzer**: Performs ALL security analysis in ONE comprehensive pass: OWASP vulnerabilities, dependency CVEs, hardcoded secrets, and config compliance.\n\n## Workflow (FAST - 2 Task Calls Only)\n1. **Intake**: Get repository URL from user via AskUserQuestion\n2. **Setup**: Use Task(FileManager) to clone the repository to /scratch\n3. **Analysis**: Use Task(SecurityAnalyzer) for comprehensive security scan\n4. **Report**: Calculate the security score yourself and output structured JSON\n\n## Tools You Have Access To\n- **Task** - to delegate to FileManager and SecurityAnalyzer\n- **AskUserQuestion** - to get repository URL from user\n- **TodoWrite** - to track progress\n\n## Security Score Calculation (Do This Yourself)\nAfter SecurityAnalyzer returns findings, calculate the score:\n- Start with 100 points\n- Subtract: critical × 25, high × 15, medium × 5, low × 2\n- Subtract: secrets × 20, outdated dependencies × 8\n- Minimum score is 0\n\nGrades: A (90-100), B (80-89), C (70-79), D (50-69), F (<50)\n\n## Custom Tools (Available to SecurityAnalyzer)\nThese tools are used by SecurityAnalyzer during its comprehensive scan:\n- `check_owasp_top10`: Analyzes code for OWASP vulnerabilities\n- `analyze_dependencies`: Checks dependencies against CVE databases  \n- `detect_hardcoded_secrets`: Scans text for secret patterns\n\n## Guidelines\n- FileManager MUST run first to set up files in /scratch\n- SecurityAnalyzer does ALL analysis in one pass (no separate scanners)\n- After SecurityAnalyzer returns, YOU calculate the score and generate the final JSON report\n- Final output must follow the structured JSON schema",
+  "model": "haiku",
+  "tools": {
+    "enabled": ["WebSearch", "AskUserQuestion", "TodoWrite", "Task"],
+    "disabled": []
+  },
+  "skills": {
+    "enabled": []
+  },
+  "connectors": [],
+  "subagents": {
+    "FileManager": {
+      "description": "Setup agent. Clones/downloads repositories to /scratch. Use FIRST before any analysis.",
+      "prompt": "You are FileManager. Your job is to prepare the workspace for security analysis.\n\n## Your Task\nClone the repository to /scratch. Use git clone if it's a GitHub URL, or curl/wget if it's a file URL.\n\n## Steps\n1. Clone/download to /scratch/<repo-name>\n2. Verify files exist with ls\n3. Report success with the exact path\n\n## Example\n```bash\ngit clone https://github.com/user/repo /scratch/repo\nls /scratch/repo\n```\n\nBe concise. Report the path where files were saved.",
+      "tools": ["Bash", "Read"],
+      "model": "haiku"
+    },
+    "SecurityAnalyzer": {
+      "description": "Comprehensive security scanner. Performs ALL security analysis in ONE pass: OWASP vulnerabilities, dependency CVEs, hardcoded secrets, and config compliance.",
+      "prompt": "You are SecurityAnalyzer. Perform a COMPREHENSIVE security scan of /scratch in ONE efficient pass.\n\n## CRITICAL: Complete ALL checks (target ~10 tool calls total)\n\n### Step 1: Dependencies (2 calls)\n- Glob for package.json, requirements.txt, Gemfile, go.mod\n- Read and use analyze_dependencies tool\n\n### Step 2: Secrets (3 calls)\n- Glob for .env*, config.*, *.json, *.yaml (limit 5 files)\n- Read each and use detect_hardcoded_secrets tool\n\n### Step 3: Vulnerabilities (4 calls)\n- Glob for *.js, *.ts, *.py (limit 5 files)\n- Read each and use check_owasp_top10 tool\n\n### Step 4: Compliance (included above)\n- While reading configs, note: debug=true, CORS *, missing headers\n\n## Output Format\nReturn a structured summary:\n```\n## Security Scan Results\n\n### Summary\n- Critical: X\n- High: X  \n- Medium: X\n- Dependencies with CVEs: X\n- Secrets found: X\n\n### Findings\n[For each finding: file:line, type, severity, fix]\n\n### Compliance\n- Debug mode: ✅/❌\n- CORS: ✅/❌\n- Headers: ✅/❌\n```\n\nNO TodoWrite. Be concise. Focus on findings, not process.",
+      "tools": ["Read", "Glob", "Grep", "check_owasp_top10", "analyze_dependencies", "detect_hardcoded_secrets"],
+      "model": "haiku"
+    }
+  },
+  "customTools": [
+    {
+      "name": "check_owasp_top10",
+      "description": "Analyzes a code snippet for OWASP Top 10 vulnerabilities. Returns identified vulnerabilities with severity and remediation advice.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The code snippet to analyze"
+          },
+          "language": {
+            "type": "string",
+            "description": "Programming language (javascript, python, java, go, ruby, php)",
+            "enum": ["javascript", "python", "java", "go", "ruby", "php", "typescript", "csharp"]
+          },
+          "filename": {
+            "type": "string",
+            "description": "Original filename for context"
+          }
+        },
+        "required": ["code", "language"]
+      },
+      "handler": "const patterns = {\n  sqlInjection: {\n    javascript: /(\\$\\{.*\\}|['\"`]\\s*\\+\\s*\\w+|\\w+\\s*\\+\\s*['\"`]).*(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE)/gi,\n    python: /(?:execute|cursor\\.execute)\\s*\\(\\s*(?:f['\"]|['\"].*%|['\"].*\\.format)/gi,\n    java: /(?:executeQuery|prepareStatement)\\s*\\(\\s*['\"].*\\+/gi,\n    general: /(?:SELECT|INSERT|UPDATE|DELETE).*(?:\\+\\s*\\w+|\\$\\{|\\%s|\\.format)/gi\n  },\n  xss: {\n    javascript: /(?:innerHTML|outerHTML|document\\.write)\\s*=|\\.html\\s*\\(/gi,\n    python: /(?:render_template_string|Markup)\\s*\\(/gi,\n    general: /(?:innerHTML|outerHTML|document\\.write|v-html|dangerouslySetInnerHTML)/gi\n  },\n  hardcodedSecrets: {\n    general: /(?:password|secret|api_key|apikey|token|credential)\\s*[:=]\\s*['\"][^'\"]{8,}['\"]/gi\n  },\n  pathTraversal: {\n    general: /(?:\\.\\.\\/|\\.\\.\\\\|%2e%2e%2f|%2e%2e\\/)/gi\n  },\n  commandInjection: {\n    javascript: /(?:exec|spawn|execSync)\\s*\\([^)]*\\+/gi,\n    python: /(?:os\\.system|subprocess\\.call|subprocess\\.run)\\s*\\([^)]*(?:\\+|\\.format|f['\"])/gi,\n    general: /(?:eval|exec|system|popen|shell_exec)\\s*\\(/gi\n  },\n  insecureDeserialization: {\n    javascript: /JSON\\.parse\\s*\\(\\s*(?:req\\.|request\\.|body)/gi,\n    python: /(?:pickle\\.loads|yaml\\.load\\s*\\([^)]*Loader\\s*=\\s*None|eval)/gi,\n    java: /ObjectInputStream|readObject\\s*\\(/gi\n  }\n};\n\nconst findings = [];\nconst lang = args.language.toLowerCase();\nconst code = args.code;\n\nObject.entries(patterns).forEach(([vulnType, langPatterns]) => {\n  const pattern = langPatterns[lang] || langPatterns.general;\n  if (pattern) {\n    const matches = code.match(pattern);\n    if (matches) {\n      findings.push({\n        type: vulnType,\n        severity: ['sqlInjection', 'commandInjection', 'insecureDeserialization'].includes(vulnType) ? 'critical' : 'high',\n        matches: matches.slice(0, 3),\n        count: matches.length\n      });\n    }\n  }\n});\n\nconst vulnDescriptions = {\n  sqlInjection: { name: 'SQL Injection (A03:2021)', fix: 'Use parameterized queries or prepared statements' },\n  xss: { name: 'Cross-Site Scripting (A03:2021)', fix: 'Sanitize output, use context-aware encoding' },\n  hardcodedSecrets: { name: 'Hardcoded Secrets (A02:2021)', fix: 'Use environment variables or secret management' },\n  pathTraversal: { name: 'Path Traversal (A01:2021)', fix: 'Validate and sanitize file paths, use allowlists' },\n  commandInjection: { name: 'Command Injection (A03:2021)', fix: 'Avoid shell commands, use safe APIs, validate input' },\n  insecureDeserialization: { name: 'Insecure Deserialization (A08:2021)', fix: 'Validate serialized data, use safe deserializers' }\n};\n\nconst result = {\n  filename: args.filename || 'unknown',\n  language: args.language,\n  vulnerabilitiesFound: findings.length,\n  findings: findings.map(f => ({\n    vulnerability: vulnDescriptions[f.type]?.name || f.type,\n    severity: f.severity,\n    occurrences: f.count,\n    examples: f.matches,\n    remediation: vulnDescriptions[f.type]?.fix || 'Review and fix the identified pattern'\n  }))\n};\n\nreturn JSON.stringify(result, null, 2);"
+    },
+    {
+      "name": "analyze_dependencies",
+      "description": "Parses dependency files and checks for known vulnerable versions. Supports package.json, requirements.txt, Gemfile, go.mod.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content of the dependency file"
+          },
+          "fileType": {
+            "type": "string",
+            "description": "Type of dependency file",
+            "enum": ["package.json", "requirements.txt", "Gemfile", "go.mod", "pom.xml", "Cargo.toml"]
+          }
+        },
+        "required": ["content", "fileType"]
+      },
+      "handler": "const vulnerablePackages = {\n  npm: {\n    'lodash': { below: '4.17.21', severity: 'high', cve: 'CVE-2021-23337', issue: 'Prototype Pollution' },\n    'minimist': { below: '1.2.6', severity: 'critical', cve: 'CVE-2021-44906', issue: 'Prototype Pollution' },\n    'node-fetch': { below: '2.6.7', severity: 'high', cve: 'CVE-2022-0235', issue: 'Exposure of Sensitive Information' },\n    'axios': { below: '0.21.2', severity: 'high', cve: 'CVE-2021-3749', issue: 'ReDoS' },\n    'express': { below: '4.17.3', severity: 'medium', cve: 'CVE-2022-24999', issue: 'Open Redirect' },\n    'jsonwebtoken': { below: '9.0.0', severity: 'high', cve: 'CVE-2022-23529', issue: 'Improper Verification' },\n    'moment': { below: '2.29.4', severity: 'high', cve: 'CVE-2022-31129', issue: 'ReDoS' },\n    'shell-quote': { below: '1.7.3', severity: 'critical', cve: 'CVE-2021-42740', issue: 'Command Injection' }\n  },\n  pip: {\n    'django': { below: '3.2.18', severity: 'high', cve: 'CVE-2023-24580', issue: 'DoS via file uploads' },\n    'flask': { below: '2.2.5', severity: 'medium', cve: 'CVE-2023-30861', issue: 'Cookie parsing issue' },\n    'requests': { below: '2.31.0', severity: 'medium', cve: 'CVE-2023-32681', issue: 'Information disclosure' },\n    'pyyaml': { below: '6.0.1', severity: 'critical', cve: 'CVE-2020-14343', issue: 'Arbitrary code execution' },\n    'pillow': { below: '9.3.0', severity: 'high', cve: 'CVE-2022-45198', issue: 'DoS via crafted image' },\n    'numpy': { below: '1.22.0', severity: 'medium', cve: 'CVE-2021-41496', issue: 'Buffer overflow' }\n  }\n};\n\nlet dependencies = [];\nlet ecosystem = 'npm';\n\nif (args.fileType === 'package.json') {\n  try {\n    const pkg = JSON.parse(args.content);\n    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };\n    dependencies = Object.entries(allDeps).map(([name, version]) => ({\n      name,\n      version: version.replace(/[\\^~>=<]/g, '')\n    }));\n    ecosystem = 'npm';\n  } catch (e) {\n    return JSON.stringify({ error: 'Failed to parse package.json', details: e.message });\n  }\n} else if (args.fileType === 'requirements.txt') {\n  dependencies = args.content.split('\\n')\n    .filter(line => line.trim() && !line.startsWith('#'))\n    .map(line => {\n      const match = line.match(/^([a-zA-Z0-9_-]+)(?:[=<>!~]+(.+))?/);\n      return match ? { name: match[1].toLowerCase(), version: match[2] || 'latest' } : null;\n    })\n    .filter(Boolean);\n  ecosystem = 'pip';\n}\n\nconst findings = [];\nconst db = vulnerablePackages[ecosystem] || {};\n\ndependencies.forEach(dep => {\n  const vuln = db[dep.name.toLowerCase()];\n  if (vuln) {\n    findings.push({\n      package: dep.name,\n      installedVersion: dep.version,\n      vulnerableBelow: vuln.below,\n      severity: vuln.severity,\n      cve: vuln.cve,\n      issue: vuln.issue,\n      recommendation: `Upgrade ${dep.name} to version ${vuln.below} or higher`\n    });\n  }\n});\n\nconst result = {\n  fileType: args.fileType,\n  ecosystem: ecosystem,\n  totalDependencies: dependencies.length,\n  vulnerabilitiesFound: findings.length,\n  critical: findings.filter(f => f.severity === 'critical').length,\n  high: findings.filter(f => f.severity === 'high').length,\n  medium: findings.filter(f => f.severity === 'medium').length,\n  findings: findings,\n  allDependencies: dependencies.map(d => `${d.name}@${d.version}`)\n};\n\nreturn JSON.stringify(result, null, 2);"
+    },
+    {
+      "name": "detect_hardcoded_secrets",
+      "description": "Scans text content for hardcoded secrets, API keys, passwords, and tokens using pattern matching.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content to scan for secrets"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Filename for context"
+          }
+        },
+        "required": ["content"]
+      },
+      "handler": "const secretPatterns = [\n  { name: 'AWS Access Key', pattern: /AKIA[0-9A-Z]{16}/g, severity: 'critical' },\n  { name: 'AWS Secret Key', pattern: /(?:aws_secret|secret_access_key)[\\s:='\"]+([A-Za-z0-9+/]{40})/gi, severity: 'critical' },\n  { name: 'GitHub Token', pattern: /gh[pousr]_[A-Za-z0-9_]{36,}/g, severity: 'critical' },\n  { name: 'GitHub OAuth', pattern: /github[_\\-\\.]?oauth[_\\-\\.]?token[\\s:='\"]+([a-f0-9]{40})/gi, severity: 'critical' },\n  { name: 'Slack Token', pattern: /xox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*/g, severity: 'critical' },\n  { name: 'Slack Webhook', pattern: /hooks\\.slack\\.com\\/services\\/T[A-Z0-9]+\\/B[A-Z0-9]+\\/[a-zA-Z0-9]+/g, severity: 'high' },\n  { name: 'Google API Key', pattern: /AIza[0-9A-Za-z_-]{35}/g, severity: 'high' },\n  { name: 'Google OAuth', pattern: /[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com/g, severity: 'high' },\n  { name: 'Private Key', pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g, severity: 'critical' },\n  { name: 'Generic API Key', pattern: /(?:api[_\\-\\.]?key|apikey)[\\s:='\"]+([a-zA-Z0-9_\\-]{20,})/gi, severity: 'high' },\n  { name: 'Generic Secret', pattern: /(?:secret|password|passwd|pwd)[\\s:='\"]+([^\\s'\"]{8,})/gi, severity: 'high' },\n  { name: 'Bearer Token', pattern: /bearer\\s+[a-zA-Z0-9_\\-.~+/]+=*/gi, severity: 'high' },\n  { name: 'JWT Token', pattern: /eyJ[a-zA-Z0-9_-]*\\.eyJ[a-zA-Z0-9_-]*\\.[a-zA-Z0-9_-]*/g, severity: 'medium' },\n  { name: 'Database URL', pattern: /(?:mongodb|postgres|mysql|redis):\\/\\/[^\\s'\"]+/gi, severity: 'critical' },\n  { name: 'Stripe Key', pattern: /sk_(?:live|test)_[0-9a-zA-Z]{24,}/g, severity: 'critical' },\n  { name: 'Twilio', pattern: /SK[a-f0-9]{32}/g, severity: 'high' },\n  { name: 'SendGrid', pattern: /SG\\.[a-zA-Z0-9_-]{22}\\.[a-zA-Z0-9_-]{43}/g, severity: 'high' },\n  { name: 'Mailgun', pattern: /key-[a-f0-9]{32}/g, severity: 'high' },\n  { name: 'NPM Token', pattern: /npm_[a-zA-Z0-9]{36}/g, severity: 'critical' },\n  { name: 'Heroku API Key', pattern: /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, severity: 'high' }\n];\n\nconst findings = [];\nconst content = args.content;\n\nsecretPatterns.forEach(({ name, pattern, severity }) => {\n  const matches = content.match(pattern);\n  if (matches) {\n    const masked = matches.map(m => {\n      if (m.length > 12) {\n        return m.substring(0, 6) + '...' + m.substring(m.length - 4);\n      }\n      return m.substring(0, 4) + '****';\n    });\n\n    findings.push({\n      type: name,\n      severity: severity,\n      count: matches.length,\n      maskedExamples: [...new Set(masked)].slice(0, 3)\n    });\n  }\n});\n\nconst suspiciousPatterns = [];\nif (args.filename) {\n  const fname = args.filename.toLowerCase();\n  if (fname.includes('.env') || fname === '.env') suspiciousPatterns.push('.env file detected');\n  if (fname.includes('credentials')) suspiciousPatterns.push('credentials file detected');\n  if (fname.includes('secret')) suspiciousPatterns.push('secret in filename');\n  if (fname.endsWith('.pem') || fname.endsWith('.key')) suspiciousPatterns.push('key file detected');\n}\n\nconst result = {\n  filename: args.filename || 'unknown',\n  secretsFound: findings.length,\n  critical: findings.filter(f => f.severity === 'critical').length,\n  high: findings.filter(f => f.severity === 'high').length,\n  medium: findings.filter(f => f.severity === 'medium').length,\n  findings: findings,\n  suspiciousPatterns: suspiciousPatterns,\n  recommendation: findings.length > 0\n    ? 'URGENT: Remove secrets from code immediately. Use environment variables or a secret manager like HashiCorp Vault, AWS Secrets Manager, or similar.'\n    : 'No obvious secrets detected. Consider running additional scans.'\n};\n\nreturn JSON.stringify(result, null, 2);"
+    },
+    {
+      "name": "calculate_security_score",
+      "description": "Calculates an overall security score (0-100) based on vulnerability findings and provides a risk assessment.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "criticalCount": {
+            "type": "number",
+            "description": "Number of critical severity findings"
+          },
+          "highCount": {
+            "type": "number",
+            "description": "Number of high severity findings"
+          },
+          "mediumCount": {
+            "type": "number",
+            "description": "Number of medium severity findings"
+          },
+          "lowCount": {
+            "type": "number",
+            "description": "Number of low severity findings"
+          },
+          "secretsFound": {
+            "type": "number",
+            "description": "Number of hardcoded secrets detected"
+          },
+          "outdatedDependencies": {
+            "type": "number",
+            "description": "Number of outdated dependencies with known CVEs"
+          }
+        },
+        "required": ["criticalCount", "highCount", "mediumCount", "lowCount"]
+      },
+      "handler": "const critical = args.criticalCount || 0;\nconst high = args.highCount || 0;\nconst medium = args.mediumCount || 0;\nconst low = args.lowCount || 0;\nconst secrets = args.secretsFound || 0;\nconst outdated = args.outdatedDependencies || 0;\n\nlet score = 100;\n\nscore -= critical * 25;\nscore -= high * 15;\nscore -= medium * 5;\nscore -= low * 2;\nscore -= secrets * 20;\nscore -= outdated * 8;\n\nscore = Math.max(0, Math.min(100, score));\n\nlet grade, riskLevel, color, recommendation;\n\nif (score >= 90) {\n  grade = 'A';\n  riskLevel = 'LOW';\n  color = 'green';\n  recommendation = 'Excellent security posture. Continue regular audits and keep dependencies updated.';\n} else if (score >= 80) {\n  grade = 'B';\n  riskLevel = 'LOW-MEDIUM';\n  color = 'green';\n  recommendation = 'Good security with minor issues. Address medium/low findings when convenient.';\n} else if (score >= 70) {\n  grade = 'C';\n  riskLevel = 'MEDIUM';\n  color = 'yellow';\n  recommendation = 'Acceptable but needs attention. Prioritize high severity issues.';\n} else if (score >= 50) {\n  grade = 'D';\n  riskLevel = 'HIGH';\n  color = 'orange';\n  recommendation = 'Significant security risks. Address high and critical issues immediately.';\n} else {\n  grade = 'F';\n  riskLevel = 'CRITICAL';\n  color = 'red';\n  recommendation = 'SEVERE SECURITY RISK. Immediate action required. Do not deploy until critical issues are resolved.';\n}\n\nconst breakdown = {\n  criticalImpact: `-${critical * 25} (${critical} critical x 25)`,\n  highImpact: `-${high * 15} (${high} high x 15)`,\n  mediumImpact: `-${medium * 5} (${medium} medium x 5)`,\n  lowImpact: `-${low * 2} (${low} low x 2)`,\n  secretsImpact: `-${secrets * 20} (${secrets} secrets x 20)`,\n  outdatedImpact: `-${outdated * 8} (${outdated} outdated x 8)`\n};\n\nconst result = {\n  score: score,\n  grade: grade,\n  riskLevel: riskLevel,\n  color: color,\n  summary: {\n    totalFindings: critical + high + medium + low,\n    critical: critical,\n    high: high,\n    medium: medium,\n    low: low,\n    secretsExposed: secrets,\n    vulnerableDependencies: outdated\n  },\n  scoreBreakdown: breakdown,\n  recommendation: recommendation,\n  passesMinimumBar: score >= 70,\n  deploymentReady: score >= 80 && critical === 0 && secrets === 0\n};\n\nreturn JSON.stringify(result, null, 2);"
+    }
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "code": "const dangerousPatterns = [\n  /rm\\s+(-rf?|--recursive)/i,\n  />\\s*\\/dev\\/sd/i,\n  /mkfs/i,\n  /dd\\s+if=/i,\n  /:\\(\\)\\{.*\\|.*&.*\\}/,\n  /chmod\\s+777/i,\n  /curl.*\\|\\s*bash/i,\n  /wget.*\\|\\s*sh/i\n];\n\nconst command = input.command || '';\nfor (const pattern of dangerousPatterns) {\n  if (pattern.test(command)) {\n    return {\n      hookSpecificOutput: {\n        hookEventName: 'PreToolUse',\n        permissionDecision: 'deny',\n        reason: 'Blocked dangerous command pattern: ' + pattern.toString()\n      }\n    };\n  }\n}\n\nreturn {\n  hookSpecificOutput: {\n    hookEventName: 'PreToolUse',\n    permissionDecision: 'allow'\n  }\n};"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "code": "const timestamp = new Date().toISOString();\nconst logEntry = `[${timestamp}] Tool: ${toolName} | Success`;\n\nreturn {\n  hookSpecificOutput: {\n    hookEventName: 'PostToolUse',\n    additionalContext: `Audit log: ${toolName} executed successfully`\n  }\n};"
+      },
+      {
+        "code": "const output = String(result || '');\nconst alertKeywords = ['critical', 'CVE-', 'secret', 'password', 'AKIA', 'vulnerability'];\n\nconst foundAlerts = alertKeywords.filter(kw =>\n  output.toLowerCase().includes(kw.toLowerCase())\n);\n\nif (foundAlerts.length > 0) {\n  return {\n    hookSpecificOutput: {\n      hookEventName: 'PostToolUse',\n      additionalContext: `SECURITY ALERT: Potential finding detected (keywords: ${foundAlerts.join(', ')})`\n    }\n  };\n}\n\nreturn {\n  hookSpecificOutput: {\n    hookEventName: 'PostToolUse'\n  }\n};"
+      }
+    ]
+  },
+  "outputFormat": {
+    "type": "json_schema",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "executiveSummary": {
+          "type": "object",
+          "properties": {
+            "overallScore": { "type": "number", "minimum": 0, "maximum": 100 },
+            "grade": { "type": "string", "enum": ["A", "B", "C", "D", "F"] },
+            "riskLevel": { "type": "string", "enum": ["LOW", "LOW-MEDIUM", "MEDIUM", "HIGH", "CRITICAL"] },
+            "deploymentReady": { "type": "boolean" },
+            "topPriorities": {
+              "type": "array",
+              "items": { "type": "string" },
+              "maxItems": 5
+            }
+          },
+          "required": ["overallScore", "grade", "riskLevel", "deploymentReady", "topPriorities"]
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalFindings": { "type": "integer" },
+            "critical": { "type": "integer" },
+            "high": { "type": "integer" },
+            "medium": { "type": "integer" },
+            "low": { "type": "integer" },
+            "secretsExposed": { "type": "integer" },
+            "vulnerableDependencies": { "type": "integer" }
+          },
+          "required": ["totalFindings", "critical", "high", "medium", "low"]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+              "category": { "type": "string", "enum": ["vulnerability", "secret", "dependency", "configuration"] },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "location": { "type": "string" },
+              "cve": { "type": "string" },
+              "remediation": { "type": "string" },
+              "effort": { "type": "string", "enum": ["quick", "moderate", "significant"] }
+            },
+            "required": ["id", "severity", "category", "title", "description", "remediation"]
+          }
+        },
+        "recommendations": {
+          "type": "object",
+          "properties": {
+            "immediate": { "type": "array", "items": { "type": "string" } },
+            "shortTerm": { "type": "array", "items": { "type": "string" } },
+            "mediumTerm": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["immediate", "shortTerm", "mediumTerm"]
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "scanDate": { "type": "string" },
+            "filesScanned": { "type": "integer" },
+            "toolsUsed": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["executiveSummary", "summary", "findings", "recommendations"]
+    }
+  },
+  "errorHandling": {
+    "retryOnFailure": true,
+    "maxRetries": 3,
+    "retryDelay": 2000,
+    "fallbackTools": ["Read", "Grep", "Glob"]
+  },
+  "settings": {
+    "maxTurns": 150,
+    "maxBudgetUsd": 10.0,
+    "permissionMode": "default",
+    "enableFileCheckpointing": true
+  },
+  "ui": {
+    "color": "#ef4444",
+    "icon": "Bug",
+    "category": "code"
+  }
+}

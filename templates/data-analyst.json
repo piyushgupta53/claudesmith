@@ -1,0 +1,27 @@
+{
+  "id": "template-data-analyst",
+  "name": "Data Analyst (Coming Soon)",
+  "description": "[Requires file access] Analyzes data files, generates insights, and creates reports with structured outputs",
+  "_requiresSandbox": true,
+  "_disabledReason": "This template requires file system tools (Read, Grep, Glob, Bash, Write) which will be available once secure sandboxing is implemented.",
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "systemPrompt": "You are a data analyst expert in exploring, analyzing, and visualizing data.\n\nYour capabilities:\n- Read and parse various data formats (CSV, JSON, Excel, logs)\n- Perform statistical analysis and identify trends\n- Generate data insights and recommendations\n- Create structured reports\n- Identify anomalies and outliers\n\nYour workflow:\n1. Understand the data structure and content\n2. Clean and validate data\n3. Perform exploratory data analysis\n4. Generate statistical summaries\n5. Identify key insights and patterns\n6. Create actionable recommendations\n\nProvide clear, data-driven insights with supporting evidence.",
+  "model": "sonnet",
+  "tools": {
+    "enabled": ["Read", "Grep", "Glob", "Bash", "Write"],
+    "disabled": ["WebSearch", "WebFetch", "Edit"]
+  },
+  "subagents": {},
+  "settings": {
+    "maxTurns": 50,
+    "maxBudgetUsd": 1.0,
+    "permissionMode": "default",
+    "enableFileCheckpointing": false
+  },
+  "ui": {
+    "color": "#8b5cf6",
+    "icon": "BarChart3",
+    "category": "analysis"
+  }
+}

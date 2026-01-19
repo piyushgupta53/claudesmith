@@ -1,0 +1,678 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   SIGNAL DESIGN SYSTEM
+   An observatory for intelligent systems
+   ============================================ */
+
+@layer base {
+  :root {
+    /* Signal Dark Theme - Primary Mode */
+    /* Deep charcoal base with subtle warmth */
+    --background: 240 10% 4%;         /* #09090b - Deep void */
+    --background-secondary: 240 6% 7%; /* #111113 - Elevated surface */
+    --background-tertiary: 240 5% 10%; /* #18181b - Cards/panels */
+
+    --foreground: 210 40% 98%;        /* #f8fafc - Primary text */
+    --foreground-muted: 215 16% 57%;  /* #8b92a0 - Secondary text */
+
+    /* Card surfaces - layered depth */
+    --card: 240 5% 8%;                /* #121214 */
+    --card-foreground: 210 40% 98%;
+    --card-hover: 240 5% 11%;         /* Subtle lift on hover */
+
+    /* Popover/Dropdown */
+    --popover: 240 6% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary: Warm Amber - The Signal */
+    --primary: 38 92% 50%;            /* #f59e0b - Amber */
+    --primary-foreground: 240 10% 4%;
+    --primary-glow: 38 92% 50% / 0.15; /* Ambient glow */
+
+    /* Secondary: Soft gray for less emphasis */
+    --secondary: 240 4% 16%;          /* #27272a */
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted: Subtle backgrounds and borders */
+    --muted: 240 4% 16%;
+    --muted-foreground: 215 16% 47%;  /* #71778a */
+
+    /* Accent: Interactive highlight */
+    --accent: 240 4% 20%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive */
+    --destructive: 0 72% 51%;         /* #ef4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders - Barely visible */
+    --border: 240 4% 16%;             /* Subtle border */
+    --border-strong: 240 4% 22%;      /* More visible border */
+    --input: 240 4% 16%;
+    --ring: 38 92% 50%;               /* Amber focus ring */
+
+    /* Radius - Generous, fluid corners */
+    --radius: 0.75rem;                /* 12px */
+    --radius-lg: 1rem;                /* 16px */
+    --radius-xl: 1.5rem;              /* 24px */
+
+    /* Status Colors */
+    --success: 160 84% 39%;           /* Emerald */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;            /* Amber */
+    --warning-foreground: 0 0% 0%;
+
+    --info: 199 89% 48%;              /* Cyan */
+    --info-foreground: 0 0% 100%;
+
+    /* Special: Glow colors for ambient effects */
+    --glow-amber: 38 100% 50%;
+    --glow-emerald: 160 84% 45%;
+    --glow-cyan: 199 89% 48%;
+  }
+
+  /* Light mode - Warm, refined aesthetic */
+  .light {
+    /* Warm cream/ivory base - not harsh white */
+    --background: 40 33% 99%;             /* #FEFDFB - Warm ivory */
+    --background-secondary: 40 20% 96%;   /* #F7F5F2 - Soft cream */
+    --background-tertiary: 35 15% 93%;    /* #EFECE8 - Light warm gray */
+
+    /* Rich, readable text */
+    --foreground: 30 10% 15%;             /* #282521 - Warm charcoal */
+    --foreground-muted: 30 8% 45%;        /* #777167 - Muted brown-gray */
+
+    /* Cards with subtle warmth */
+    --card: 40 40% 99%;                   /* #FEFEFC - Slightly warmer white */
+    --card-foreground: 30 10% 15%;
+    --card-hover: 40 25% 97%;             /* #FAF8F5 - Warm hover */
+
+    /* Popovers/Dropdowns - Clean white with subtle shadow */
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 10% 15%;
+
+    /* Primary: Deep amber/gold - rich and warm */
+    --primary: 32 95% 44%;                /* #DA8B0E - Deeper amber for contrast */
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 38 92% 50% / 0.12;
+
+    /* Secondary: Soft warm gray */
+    --secondary: 35 12% 92%;              /* #EDEBE7 */
+    --secondary-foreground: 30 10% 20%;
+
+    /* Muted elements */
+    --muted: 35 12% 92%;
+    --muted-foreground: 30 8% 50%;        /* #8A8278 */
+
+    /* Accent for hover states */
+    --accent: 35 15% 90%;                 /* #E9E5DF */
+    --accent-foreground: 30 10% 15%;
+
+    /* Borders - Subtle, warm */
+    --border: 35 12% 88%;                 /* #E3DFDA */
+    --border-strong: 35 10% 82%;          /* #D6D1CA */
+    --input: 35 12% 88%;
+    --ring: 32 95% 44%;
+
+    /* Status colors - Adjusted for light mode legibility */
+    --success: 160 72% 34%;               /* Darker emerald */
+    --warning: 32 95% 44%;                /* Match primary */
+    --info: 199 80% 42%;                  /* Darker cyan */
+    --destructive: 0 72% 46%;             /* Darker red */
+
+    /* Glow colors - Softer for light mode */
+    --glow-amber: 38 100% 50% / 0.15;
+    --glow-emerald: 160 84% 45% / 0.12;
+    --glow-cyan: 199 89% 48% / 0.1;
+  }
+
+  /* Light mode specific overrides */
+  .light ::selection {
+    background-color: hsl(38 92% 50% / 0.2);
+    color: hsl(30 10% 15%);
+  }
+
+  .light ::-webkit-scrollbar-thumb {
+    background: hsl(35 10% 80%);
+  }
+
+  .light ::-webkit-scrollbar-thumb:hover {
+    background: hsl(35 10% 70%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Custom selection */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+
+  /* Custom scrollbar - subtle and elegant */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border-strong));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+/* ============================================
+   TYPOGRAPHY SYSTEM
+   ============================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-semibold tracking-tight;
+  text-wrap: balance;
+}
+
+h1 {
+  @apply text-4xl lg:text-5xl xl:text-6xl;
+  letter-spacing: -0.025em;
+}
+h2 {
+  @apply text-3xl lg:text-4xl;
+  letter-spacing: -0.02em;
+}
+h3 {
+  @apply text-2xl;
+  letter-spacing: -0.015em;
+}
+h4 { @apply text-xl; }
+h5 { @apply text-lg; }
+
+small { @apply text-sm font-medium leading-none; }
+
+p {
+  @apply leading-relaxed;
+}
+
+/* Display text - for hero sections */
+.text-display {
+  @apply font-serif tracking-tight;
+  letter-spacing: -0.03em;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+@layer utilities {
+  /* Centering */
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-amber-400;
+  }
+
+  /* Glass morphism - layered depth */
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl border-b border-border/50;
+  }
+
+  .glass-panel {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-2xl;
+  }
+
+  /* Ambient glow effects */
+  .glow-amber {
+    box-shadow: 0 0 40px -10px hsl(var(--glow-amber) / 0.3);
+  }
+
+  .glow-amber-sm {
+    box-shadow: 0 0 20px -5px hsl(var(--glow-amber) / 0.2);
+  }
+
+  .glow-emerald {
+    box-shadow: 0 0 40px -10px hsl(var(--glow-emerald) / 0.3);
+  }
+
+  /* Gradient borders */
+  .border-gradient {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      linear-gradient(135deg, hsl(var(--border-strong)), hsl(var(--border))) border-box;
+  }
+
+  /* Interactive states */
+  .interactive {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .interactive:hover {
+    @apply bg-accent/50;
+  }
+
+  .interactive:active {
+    @apply scale-[0.98];
+  }
+
+  /* Card hover lift */
+  .card-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-lift:hover {
+    @apply -translate-y-1 shadow-xl;
+    box-shadow:
+      0 20px 40px -20px hsl(var(--primary) / 0.1),
+      0 0 0 1px hsl(var(--border-strong));
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Grain texture overlay */
+  .grain {
+    position: relative;
+  }
+
+  .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Animated gradient background */
+  .bg-mesh {
+    background-image:
+      radial-gradient(at 40% 20%, hsl(var(--primary) / 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(var(--info) / 0.05) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(var(--success) / 0.05) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsl(var(--primary) / 0.05) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(var(--info) / 0.05) 0px, transparent 50%);
+  }
+
+  /* Dot pattern background */
+  .bg-dots {
+    background-image: radial-gradient(hsl(var(--border-strong)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Grid pattern */
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* Fade edges */
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  }
+
+  .mask-fade-t {
+    mask-image: linear-gradient(to top, black 80%, transparent 100%);
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px -5px hsl(var(--glow-amber) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px -5px hsl(var(--glow-amber) / 0.5);
+  }
+}
+
+@keyframes signal-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes typing-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Animation utility classes */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-signal-pulse {
+  animation: signal-pulse 1.5s ease-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--accent)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-typing-cursor {
+  animation: typing-cursor 0.8s step-end infinite;
+}
+
+/* Stagger delays for lists */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+
+/* Focus ring - amber glow */
+.focus-ring {
+  @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-background;
+}
+
+/* Status indicators */
+.status-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.status-dot-active {
+  @apply bg-success;
+  box-shadow: 0 0 8px hsl(var(--success));
+}
+
+.status-dot-warning {
+  @apply bg-warning;
+  box-shadow: 0 0 8px hsl(var(--warning));
+}
+
+.status-dot-error {
+  @apply bg-destructive;
+  box-shadow: 0 0 8px hsl(var(--destructive));
+}
+
+/* Prose styling for markdown */
+.prose-signal {
+  @apply text-foreground;
+}
+
+.prose-signal h1,
+.prose-signal h2,
+.prose-signal h3,
+.prose-signal h4 {
+  @apply text-foreground font-semibold;
+}
+
+.prose-signal p {
+  @apply text-foreground/90 leading-relaxed;
+}
+
+.prose-signal a {
+  @apply text-primary hover:underline;
+}
+
+.prose-signal code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground;
+}
+
+.prose-signal pre {
+  @apply bg-muted/50 border border-border rounded-lg p-4 overflow-x-auto;
+}
+
+.prose-signal pre code {
+  @apply bg-transparent p-0;
+}
+
+.prose-signal ul,
+.prose-signal ol {
+  @apply space-y-2 pl-6;
+}
+
+.prose-signal li {
+  @apply text-foreground/90;
+}
+
+.prose-signal blockquote {
+  @apply border-l-2 border-primary pl-4 italic text-foreground/80;
+}
+
+/* ============================================
+   SPECIAL EFFECTS
+   ============================================ */
+
+/* Animated border gradient */
+@property --border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.border-animated {
+  --border-angle: 0deg;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+    conic-gradient(from var(--border-angle), hsl(var(--primary)), hsl(var(--info)), hsl(var(--primary))) border-box;
+  animation: border-rotate 4s linear infinite;
+}
+
+@keyframes border-rotate {
+  to { --border-angle: 360deg; }
+}
+
+/* Spotlight effect on hover */
+.spotlight {
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    hsl(var(--primary) / 0.06),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.spotlight:hover::after {
+  opacity: 1;
+}
+
+/* ============================================
+   LIGHT MODE ADJUSTMENTS
+   ============================================ */
+
+/* Softer shadows in light mode */
+.light .shadow-glow-sm {
+  box-shadow: 0 0 20px -5px hsl(var(--glow-amber));
+}
+
+.light .shadow-glow-md {
+  box-shadow: 0 0 30px -5px hsl(var(--glow-amber));
+}
+
+/* Light mode cards get subtle shadows instead of borders */
+.light .card-lift:hover {
+  box-shadow:
+    0 10px 40px -15px hsl(30 10% 20% / 0.1),
+    0 0 0 1px hsl(var(--border));
+}
+
+/* Adjust mesh background for light mode */
+.light .bg-mesh {
+  background-image:
+    radial-gradient(at 40% 20%, hsl(var(--primary) / 0.06) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(var(--info) / 0.04) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(var(--success) / 0.04) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(var(--primary) / 0.03) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(var(--info) / 0.03) 0px, transparent 50%);
+}
+
+/* Softer grain in light mode */
+.light .grain::before {
+  opacity: 0.015;
+}
+
+/* Adjust focus ring for light mode */
+.light .focus-ring {
+  @apply ring-primary/40 ring-offset-background;
+}
+
+/* Status dots with softer glow in light mode */
+.light .status-dot-active {
+  box-shadow: 0 0 6px hsl(var(--success) / 0.5);
+}
+
+.light .status-dot-warning {
+  box-shadow: 0 0 6px hsl(var(--warning) / 0.5);
+}
+
+.light .status-dot-error {
+  box-shadow: 0 0 6px hsl(var(--destructive) / 0.5);
+}

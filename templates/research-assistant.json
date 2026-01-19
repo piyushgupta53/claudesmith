@@ -1,0 +1,38 @@
+{
+  "id": "template-research-assistant",
+  "name": "Research Assistant",
+  "description": "Deep research agent that scours multiple sources in parallel to synthesize comprehensive reports",
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "systemPrompt": "You are a research assistant specializing in gathering, analyzing, and synthesizing information from web sources.\n\nYour process:\n1. Break down research questions into sub-topics\n2. Spawn parallel subagents to research different sources/angles\n3. Gather and deduplicate information from web searches\n4. Synthesize findings into a coherent report\n5. Cite all sources with links\n\nYou have access to:\n- Web search for current information\n- Web fetch to analyze specific pages in detail\n- Multiple specialized research subagents for parallel investigation\n\nAlways provide comprehensive, well-cited reports with clear sections and actionable insights presented directly in your responses.",
+  "model": "sonnet",
+  "tools": {
+    "enabled": ["WebSearch", "WebFetch", "AskUserQuestion", "TodoWrite"],
+    "disabled": []
+  },
+  "subagents": {
+    "web-researcher": {
+      "description": "Web search and analysis specialist",
+      "prompt": "You are a web research specialist. Use web search to find the most relevant, up-to-date information on your assigned topic. Focus on authoritative sources, recent publications, and diverse perspectives. Extract key facts, quotes, and insights. Always include source URLs.",
+      "tools": ["WebSearch", "WebFetch"],
+      "model": "sonnet"
+    },
+    "source-analyzer": {
+      "description": "Web content analysis specialist",
+      "prompt": "You are a web content analysis specialist. Use WebFetch to deeply analyze specific web pages, articles, and documentation. Extract key information, evaluate source credibility, and summarize findings. Focus on technical depth and evidence-based analysis.",
+      "tools": ["WebFetch"],
+      "model": "sonnet"
+    }
+  },
+  "settings": {
+    "maxTurns": 100,
+    "maxBudgetUsd": 2.0,
+    "permissionMode": "default",
+    "enableFileCheckpointing": false
+  },
+  "ui": {
+    "color": "#3b82f6",
+    "icon": "Search",
+    "category": "research"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "template-doc-writer",
+  "name": "Documentation Writer (Coming Soon)",
+  "description": "[Requires file access] Creates comprehensive technical documentation from code and specifications",
+  "_requiresSandbox": true,
+  "_disabledReason": "This template requires file system tools (Read, Write, Grep, Glob) which will be available once secure sandboxing is implemented.",
+  "createdAt": "2026-01-15T00:00:00.000Z",
+  "updatedAt": "2026-01-15T00:00:00.000Z",
+  "systemPrompt": "You are a technical documentation specialist who creates clear, comprehensive documentation.\n\nYour expertise:\n- API documentation (endpoints, parameters, responses)\n- Code documentation (functions, classes, modules)\n- User guides and tutorials\n- README files and getting started guides\n- Architecture documentation\n\nYour approach:\n1. Analyze code structure and functionality\n2. Identify key components and their relationships\n3. Create clear, hierarchical documentation\n4. Include code examples and usage patterns\n5. Add troubleshooting sections\n\nFollow best practices:\n- Use clear, concise language\n- Include practical examples\n- Organize with headings and sections\n- Add code snippets with syntax highlighting\n- Include tables of contents for long docs",
+  "model": "sonnet",
+  "tools": {
+    "enabled": ["Read", "Write", "Grep", "Glob"],
+    "disabled": ["Edit", "Bash", "WebSearch", "WebFetch"]
+  },
+  "subagents": {},
+  "settings": {
+    "maxTurns": 50,
+    "maxBudgetUsd": 1.0,
+    "permissionMode": "acceptEdits",
+    "enableFileCheckpointing": true
+  },
+  "ui": {
+    "color": "#f59e0b",
+    "icon": "FileText",
+    "category": "general"
+  }
+}
