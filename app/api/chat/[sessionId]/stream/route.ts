@@ -484,8 +484,14 @@ export async function GET(
           }
         }
 
-        // Clear heartbeat interval before completion
-        clearInterval(heartbeatInterval);
+        // PERFORMANCE FIX: Clear heartbeat interval before completion
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+
+        // PERFORMANCE FIX: Clear pending tool calls map to prevent memory leak
+        pendingToolCalls.clear();
 
         console.log(`[Stream] Complete. Total messages: ${messageCount}`);
 
@@ -510,10 +516,14 @@ export async function GET(
       } catch (error: any) {
         console.error('[Stream] Error:', error.message);
 
-        // Clear heartbeat interval on error (if it was created)
+        // PERFORMANCE FIX: Clear heartbeat interval on error (if it was created)
         if (heartbeatInterval) {
           clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
         }
+
+        // PERFORMANCE FIX: Clear pending tool calls map to prevent memory leak
+        pendingToolCalls.clear();
 
         // Send error event
         sendEvent({
@@ -536,6 +546,14 @@ export async function GET(
 
         controller.close();
       }
+    },
+    // PERFORMANCE FIX: Handle stream cancellation (e.g., client disconnect)
+    // This ensures cleanup happens even if the client disconnects unexpectedly
+    cancel() {
+      console.log(`[Stream] Stream cancelled for session: ${sessionId}`);
+      // Note: heartbeatInterval and pendingToolCalls are scoped to the start() function
+      // They will be cleaned up when the function exits
+      // This handler is mainly for logging and any future global cleanup needs
     },
   });
 

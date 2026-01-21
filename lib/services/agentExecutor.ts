@@ -140,9 +140,18 @@ export class AgentExecutor {
 
   /**
    * Register a callback for progress updates
+   * PERFORMANCE FIX: Returns an unsubscribe function to prevent callback accumulation
+   * @returns Function to unsubscribe the callback
    */
-  public onProgressUpdate(callback: (progress: ProgressState) => void): void {
+  public onProgressUpdate(callback: (progress: ProgressState) => void): () => void {
     this.progressCallbacks.push(callback);
+    // Return unsubscribe function
+    return () => {
+      const index = this.progressCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.progressCallbacks.splice(index, 1);
+      }
+    };
   }
 
   /**
@@ -313,6 +322,12 @@ export class AgentExecutor {
       return;
     }
     this.cleanupDone = true;
+
+    // PERFORMANCE FIX: Clear all progress callbacks to prevent memory leaks
+    this.progressCallbacks = [];
+
+    // Clear any pending question resolvers
+    this.questionResolvers.clear();
 
     if (this.containerId) {
       try {

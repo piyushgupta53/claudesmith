@@ -92,7 +92,24 @@ export async function GET(request: Request, { params }: RouteParams) {
       grantedScopes: tokens.scope ? tokens.scope.split(/[\s,]+/) : [],
     };
 
+    // SECURITY: Escape JSON for safe embedding in HTML script tags
+    // This prevents XSS attacks where OAuth provider data could contain </script>
+    // or other sequences that break out of the script context
+    const escapeForHtml = (str: string) => str
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026')
+      .replace(/'/g, '\\u0027')
+      .replace(/"/g, '\\u0022');
+
+    const safeTokenData = escapeForHtml(JSON.stringify(tokenData));
+    const safeState = escapeForHtml(JSON.stringify(state));
+    const safeProvider = escapeForHtml(JSON.stringify(provider));
+    const safeSettingsUrl = escapeForHtml(settingsUrl.toString());
+    const safeProviderDisplay = escapeForHtml(provider);
+
     // Return HTML that passes data to client-side JavaScript
+    // SECURITY: postMessage uses window.location.origin to prevent cross-origin attacks
     const html = `
 <!DOCTYPE html>
 <html>
@@ -102,17 +119,20 @@ export async function GET(request: Request, { params }: RouteParams) {
 <body>
   <script>
     // Store token data and redirect
-    const tokenData = ${JSON.stringify(tokenData)};
-    const state = ${JSON.stringify(state)};
-    const provider = ${JSON.stringify(provider)};
+    const tokenData = ${safeTokenData};
+    const state = ${safeState};
+    const provider = ${safeProvider};
 
     // Dispatch custom event for the app to handle
-    window.opener?.postMessage({
-      type: 'oauth_callback',
-      provider,
-      state,
-      tokenData,
-    }, '*');
+    // SECURITY: Use specific origin instead of '*' to prevent cross-origin attacks
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'oauth_callback',
+        provider,
+        state,
+        tokenData,
+      }, window.location.origin);
+    }
 
     // Also store in sessionStorage as fallback
     sessionStorage.setItem('oauth_callback_data', JSON.stringify({
@@ -122,9 +142,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     }));
 
     // Redirect to settings page
-    window.location.href = '${settingsUrl.toString()}';
+    window.location.href = '${safeSettingsUrl}';
   </script>
-  <p>Connecting to ${provider}...</p>
+  <p>Connecting to ${safeProviderDisplay}...</p>
 </body>
 </html>
 `;

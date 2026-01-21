@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import type { ExecutionNode, ExecutionEvent, PermissionRequest, QuestionRequest, Checkpoint } from '../types/execution';
 import type { ToolCall } from '../types/chat';
 
+// PERFORMANCE FIX: Limits to prevent unbounded memory growth
+// These values are chosen to provide good history while preventing memory issues
+const MAX_EVENTS_PER_SESSION = 500;
+const MAX_TOOL_CALLS_PER_SESSION = 200;
+const MAX_CHECKPOINTS_PER_SESSION = 100;
+const MAX_PERMISSIONS_PER_SESSION = 50;
+const MAX_QUESTIONS_PER_SESSION = 50;
+
 interface ExecutionStore {
   // State
   executions: Map<string, ExecutionNode>;  // sessionId -> execution
@@ -94,9 +102,14 @@ export const useExecutionStore = create<ExecutionStore>((set, get) => ({
 
   // Event actions
   addEvent: (sessionId, event) => set((state) => {
-    const sessionEvents = state.events.get(sessionId) || [];
+    let sessionEvents = state.events.get(sessionId) || [];
+    sessionEvents = [...sessionEvents, event];
+    // PERFORMANCE FIX: FIFO eviction to prevent unbounded growth
+    if (sessionEvents.length > MAX_EVENTS_PER_SESSION) {
+      sessionEvents = sessionEvents.slice(-MAX_EVENTS_PER_SESSION);
+    }
     const newEvents = new Map(state.events);
-    newEvents.set(sessionId, [...sessionEvents, event]);
+    newEvents.set(sessionId, sessionEvents);
     return { events: newEvents };
   }),
 
@@ -106,9 +119,14 @@ export const useExecutionStore = create<ExecutionStore>((set, get) => ({
 
   // Tool call actions
   addToolCall: (sessionId, toolCall) => set((state) => {
-    const sessionToolCalls = state.toolCalls.get(sessionId) || [];
+    let sessionToolCalls = state.toolCalls.get(sessionId) || [];
+    sessionToolCalls = [...sessionToolCalls, toolCall];
+    // PERFORMANCE FIX: FIFO eviction to prevent unbounded growth
+    if (sessionToolCalls.length > MAX_TOOL_CALLS_PER_SESSION) {
+      sessionToolCalls = sessionToolCalls.slice(-MAX_TOOL_CALLS_PER_SESSION);
+    }
     const newToolCalls = new Map(state.toolCalls);
-    newToolCalls.set(sessionId, [...sessionToolCalls, toolCall]);
+    newToolCalls.set(sessionId, sessionToolCalls);
     return { toolCalls: newToolCalls };
   }),
 
@@ -132,9 +150,14 @@ export const useExecutionStore = create<ExecutionStore>((set, get) => ({
 
   // Permission actions
   addPermissionRequest: (sessionId, request) => set((state) => {
-    const sessionPermissions = state.permissions.get(sessionId) || [];
+    let sessionPermissions = state.permissions.get(sessionId) || [];
+    sessionPermissions = [...sessionPermissions, request];
+    // PERFORMANCE FIX: FIFO eviction to prevent unbounded growth
+    if (sessionPermissions.length > MAX_PERMISSIONS_PER_SESSION) {
+      sessionPermissions = sessionPermissions.slice(-MAX_PERMISSIONS_PER_SESSION);
+    }
     const newPermissions = new Map(state.permissions);
-    newPermissions.set(sessionId, [...sessionPermissions, request]);
+    newPermissions.set(sessionId, sessionPermissions);
     return { permissions: newPermissions };
   }),
 
@@ -156,9 +179,14 @@ export const useExecutionStore = create<ExecutionStore>((set, get) => ({
 
   // Question actions
   addQuestionRequest: (sessionId, request) => set((state) => {
-    const sessionQuestions = state.questions.get(sessionId) || [];
+    let sessionQuestions = state.questions.get(sessionId) || [];
+    sessionQuestions = [...sessionQuestions, request];
+    // PERFORMANCE FIX: FIFO eviction to prevent unbounded growth
+    if (sessionQuestions.length > MAX_QUESTIONS_PER_SESSION) {
+      sessionQuestions = sessionQuestions.slice(-MAX_QUESTIONS_PER_SESSION);
+    }
     const newQuestions = new Map(state.questions);
-    newQuestions.set(sessionId, [...sessionQuestions, request]);
+    newQuestions.set(sessionId, sessionQuestions);
     return { questions: newQuestions };
   }),
 
@@ -180,9 +208,14 @@ export const useExecutionStore = create<ExecutionStore>((set, get) => ({
 
   // Checkpoint actions
   addCheckpoint: (sessionId, checkpoint) => set((state) => {
-    const sessionCheckpoints = state.checkpoints.get(sessionId) || [];
+    let sessionCheckpoints = state.checkpoints.get(sessionId) || [];
+    sessionCheckpoints = [...sessionCheckpoints, checkpoint];
+    // PERFORMANCE FIX: FIFO eviction to prevent unbounded growth
+    if (sessionCheckpoints.length > MAX_CHECKPOINTS_PER_SESSION) {
+      sessionCheckpoints = sessionCheckpoints.slice(-MAX_CHECKPOINTS_PER_SESSION);
+    }
     const newCheckpoints = new Map(state.checkpoints);
-    newCheckpoints.set(sessionId, [...sessionCheckpoints, checkpoint]);
+    newCheckpoints.set(sessionId, sessionCheckpoints);
     return { checkpoints: newCheckpoints };
   }),
 

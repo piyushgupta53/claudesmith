@@ -7,6 +7,7 @@
 
 import Docker from 'dockerode';
 import { Readable } from 'stream';
+import crypto from 'crypto';
 import {
   MountConfig,
   CommandResult,
@@ -309,8 +310,12 @@ class DockerService {
         );
       }
 
-      // Write file using heredoc
-      const writeCmd = `cat > "${filePath}" << 'CLAUDE_EOF'\n${content}\nCLAUDE_EOF`;
+      // Write file using heredoc with unique delimiter to prevent injection
+      // SECURITY: Generate a random delimiter to prevent content from breaking out of heredoc
+      // If content contains the delimiter string, it would terminate the heredoc early
+      // and allow arbitrary command injection bypassing all validation
+      const delimiter = `EOF_${crypto.randomUUID().replace(/-/g, '')}`;
+      const writeCmd = `cat > "${filePath}" << '${delimiter}'\n${content}\n${delimiter}`;
 
       const result = await this.executeCommand(
         containerId,

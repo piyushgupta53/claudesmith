@@ -29,15 +29,16 @@ async function processOAuthCallback(
   const { provider, state, tokenData } = callbackData;
   const store = useConnectorStore.getState();
 
-  // Validate state parameter
+  // SECURITY: Validate state parameter to prevent CSRF attacks
+  // The state must match a pending state we created - this proves the OAuth flow
+  // was initiated by this application and not forged by an attacker
   const pendingState = store.getPendingState(state);
   if (!pendingState) {
-    console.warn('[OAuth] No pending state found for:', state);
-    // Continue anyway if we have valid token data
-  } else {
-    // Clean up pending state
-    store.removePendingState(state);
+    console.error('[OAuth] Invalid state parameter - rejecting callback (possible CSRF attack)');
+    throw new Error('Invalid OAuth state - security validation failed');
   }
+  // Clean up pending state
+  store.removePendingState(state);
 
   // Encrypt and store tokens
   const encryptedTokenStr = await encryptTokens(tokenData.tokens);
@@ -135,12 +136,26 @@ export function useOAuthCallback() {
   // Listen for postMessage from popup window
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
+      // SECURITY: Validate origin to prevent XSS attacks
+      // Only accept messages from the same origin (our own popup window)
+      // Malicious websites cannot forge messages from our origin
+      if (event.origin !== window.location.origin) {
+        console.warn('[OAuth] Rejected message from untrusted origin:', event.origin);
+        return;
+      }
+
       if (event.data?.type === 'oauth_callback') {
         const { provider, state, tokenData } = event.data;
 
-        try {
-          const store = useConnectorStore.getState();
+        // SECURITY: Validate state parameter for postMessage flow too
+        const store = useConnectorStore.getState();
+        const pendingState = store.getPendingState(state);
+        if (!pendingState) {
+          console.error('[OAuth] Invalid state in postMessage - rejecting (possible CSRF attack)');
+          return;
+        }
 
+        try {
           // Encrypt and store tokens
           const encryptedTokenStr = await encryptTokens(tokenData.tokens);
 
@@ -155,7 +170,7 @@ export function useOAuthCallback() {
           // Store encrypted tokens
           store.setEncryptedTokens(connectionId, encryptedTokenStr);
 
-          // Clean up pending state
+          // Clean up pending state (already validated above)
           store.removePendingState(state);
 
           // Show success toast

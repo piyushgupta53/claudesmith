@@ -75,6 +75,11 @@ export function useStreamingMessages(sessionId: string | null) {
   // Track active subagents to prevent tool_result from overwriting subagent status
   const activeSubagentNamesRef = useRef<Set<string>>(new Set());
 
+  // PERFORMANCE FIX: Store EventSource and interval refs for proper cleanup
+  // This prevents memory leaks when components unmount during streaming
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const slowToolCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const startStreaming = useCallback(async (agentConfig: any, prompt: string) => {
     if (!sessionId) return;
 
@@ -183,10 +188,22 @@ export function useStreamingMessages(sessionId: string | null) {
         url = `/api/chat/${sessionId}/stream?${params}`;
       }
 
-      // Create EventSource for SSE
-      const eventSource = new EventSource(url);
+      // PERFORMANCE FIX: Close any existing EventSource before creating new one
+      // This prevents orphaned connections if startStreaming is called multiple times
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (slowToolCheckIntervalRef.current) {
+        clearInterval(slowToolCheckIntervalRef.current);
+        slowToolCheckIntervalRef.current = null;
+      }
 
-      // Start interval to detect slow/stuck tools
+      // Create EventSource for SSE and store in ref for cleanup
+      const eventSource = new EventSource(url);
+      eventSourceRef.current = eventSource;
+
+      // Start interval to detect slow/stuck tools and store in ref for cleanup
       const slowToolCheckInterval = setInterval(() => {
         setToolActivities(prev => {
           const now = Date.now();
@@ -207,6 +224,7 @@ export function useStreamingMessages(sessionId: string | null) {
           return hasChanges ? updated : prev;
         });
       }, 5000); // Check every 5 seconds
+      slowToolCheckIntervalRef.current = slowToolCheckInterval;
 
       eventSource.onmessage = (event) => {
         try {
@@ -527,8 +545,11 @@ export function useStreamingMessages(sessionId: string | null) {
                 }
               }
 
+              // PERFORMANCE FIX: Cleanup and clear refs to prevent memory leaks
               clearInterval(slowToolCheckInterval);
+              slowToolCheckIntervalRef.current = null;
               eventSource.close();
+              eventSourceRef.current = null;
               setIsStreaming(false);
               setStreaming(false);
               setCurrentActivity(null);
@@ -547,8 +568,11 @@ export function useStreamingMessages(sessionId: string | null) {
                 }
               }
 
+              // PERFORMANCE FIX: Cleanup and clear refs to prevent memory leaks
               clearInterval(slowToolCheckInterval);
+              slowToolCheckIntervalRef.current = null;
               eventSource.close();
+              eventSourceRef.current = null;
               setIsStreaming(false);
               setStreaming(false);
               setCurrentActivity(null);
@@ -572,20 +596,18 @@ export function useStreamingMessages(sessionId: string | null) {
           }
         }
 
+        // PERFORMANCE FIX: Cleanup and clear refs to prevent memory leaks
         clearInterval(slowToolCheckInterval);
+        slowToolCheckIntervalRef.current = null;
         eventSource.close();
+        eventSourceRef.current = null;
         setIsStreaming(false);
         setStreaming(false);
         setCurrentActivity(null);
       };
 
-      // Store event source for cleanup
-      return () => {
-        clearInterval(slowToolCheckInterval);
-        eventSource.close();
-        setIsStreaming(false);
-        setStreaming(false);
-      };
+      // Note: Cleanup is now handled via refs in the complete/error handlers
+      // and in the useEffect cleanup below
     } catch (err: any) {
       console.error('Failed to start streaming:', err);
       setError(err.message || 'Failed to start streaming');
@@ -594,6 +616,22 @@ export function useStreamingMessages(sessionId: string | null) {
       setCurrentActivity(null);
     }
   }, [sessionId, addMessage, addToolCall, updateToolCall, addEvent, setStreaming, setExecution, addPermissionRequest, addQuestionRequest, addCheckpoint]);
+
+  // PERFORMANCE FIX: Cleanup EventSource and interval when component unmounts
+  // This prevents memory leaks if the component unmounts during streaming
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        console.log('[UI] Cleanup: Closing EventSource on unmount');
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (slowToolCheckIntervalRef.current) {
+        clearInterval(slowToolCheckIntervalRef.current);
+        slowToolCheckIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     isStreaming,
