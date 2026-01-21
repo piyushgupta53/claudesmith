@@ -86,8 +86,11 @@ export async function GET(
       // Declare heartbeat interval at top of scope so it's accessible in catch block
       let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
+      // Declare executor at top of scope so it's accessible in catch block
+      let executor: AgentExecutor | null = null;
+
       try {
-        const executor = new AgentExecutor(sessionId, agentConfig);
+        executor = new AgentExecutor(sessionId, agentConfig);
 
         // Register executor so other API routes can access it
         executorRegistry.register(sessionId, executor);
@@ -494,7 +497,13 @@ export async function GET(
           timestamp: new Date().toISOString(),
         });
 
-        // Unregister executor
+        // Cleanup: destroy container and unregister executor
+        try {
+          await executor.destroy();
+          console.log(`[Stream] Container destroyed for session: ${sessionId}`);
+        } catch (cleanupError) {
+          console.error(`[Stream] Failed to destroy container for session ${sessionId}:`, cleanupError);
+        }
         executorRegistry.unregister(sessionId);
 
         controller.close();
@@ -514,7 +523,15 @@ export async function GET(
           timestamp: new Date().toISOString(),
         });
 
-        // Unregister executor on error
+        // Cleanup: destroy container and unregister executor on error
+        if (executor) {
+          try {
+            await executor.destroy();
+            console.log(`[Stream] Container destroyed on error for session: ${sessionId}`);
+          } catch (cleanupError) {
+            console.error(`[Stream] Failed to destroy container for session ${sessionId}:`, cleanupError);
+          }
+        }
         executorRegistry.unregister(sessionId);
 
         controller.close();

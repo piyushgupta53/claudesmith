@@ -19,6 +19,7 @@ export class AgentExecutor {
   private agentConfig: AgentConfig;
   private containerId: string | null = null;
   private containerInitialized: boolean = false;
+  private cleanupDone: boolean = false;
   private questionResolvers: Map<string, (answers: Record<string, string>) => void> = new Map();
 
   // Progress tracking
@@ -303,15 +304,29 @@ export class AgentExecutor {
 
   /**
    * Cleanup container and resources
+   * This method is idempotent - calling it multiple times is safe
    */
   private async cleanup(): Promise<void> {
+    // Prevent double cleanup
+    if (this.cleanupDone) {
+      console.log(`[AgentExecutor] Cleanup already done for session ${this.sessionId}, skipping`);
+      return;
+    }
+    this.cleanupDone = true;
+
     if (this.containerId) {
       try {
         await dockerService.destroyContainer(this.containerId);
-        console.log(`Container destroyed for session ${this.sessionId}`);
-      } catch (error) {
-        console.error('Failed to destroy container:', error);
+        console.log(`[AgentExecutor] Container destroyed for session ${this.sessionId}`);
+      } catch (error: any) {
+        // Ignore "already in progress" errors from race conditions
+        if (error?.message?.includes('already in progress')) {
+          console.log(`[AgentExecutor] Container removal already in progress for session ${this.sessionId}`);
+        } else {
+          console.error('[AgentExecutor] Failed to destroy container:', error);
+        }
       }
+      this.containerId = null;
     }
   }
 
@@ -556,10 +571,14 @@ export class AgentExecutor {
 
   /**
    * Interrupt the current execution
+   * Note: This interrupts the SDK query but does NOT cleanup the container.
+   * Call destroy() separately to cleanup the container after interrupting.
    */
   async interrupt(): Promise<void> {
+    console.log(`[AgentExecutor] Interrupting execution for session: ${this.sessionId}`);
     if (this.queryInstance && this.queryInstance.interrupt) {
       await this.queryInstance.interrupt();
+      console.log(`[AgentExecutor] Query instance interrupted for session: ${this.sessionId}`);
     }
   }
 

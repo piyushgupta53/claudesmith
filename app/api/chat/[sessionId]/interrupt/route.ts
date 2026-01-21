@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Store active executors (in production, use Redis or similar)
-const activeExecutors = new Map<string, any>();
+import { executorRegistry } from '@/lib/services/executorRegistry';
 
 /**
  * POST /api/chat/[sessionId]/interrupt
@@ -14,17 +12,29 @@ export async function POST(
   try {
     const { sessionId } = params;
 
-    const executor = activeExecutors.get(sessionId);
+    const executor = executorRegistry.get(sessionId);
 
     if (!executor) {
+      console.log(`[Interrupt] No active executor found for session: ${sessionId}`);
+      console.log(`[Interrupt] Active sessions: ${executorRegistry.listSessions().join(', ') || 'none'}`);
       return NextResponse.json(
         { error: 'No active execution found for this session' },
         { status: 404 }
       );
     }
 
+    console.log(`[Interrupt] Interrupting execution for session: ${sessionId}`);
+
+    // Interrupt the query instance and cleanup container
     await executor.interrupt();
-    activeExecutors.delete(sessionId);
+
+    // Destroy the container
+    await executor.destroy();
+
+    // Unregister from the global registry
+    executorRegistry.unregister(sessionId);
+
+    console.log(`[Interrupt] Successfully interrupted and cleaned up session: ${sessionId}`);
 
     return NextResponse.json({
       success: true,
