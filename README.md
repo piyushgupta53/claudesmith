@@ -1,6 +1,6 @@
 # Claudesmith
 
-Build powerful AI agents with Claude. A platform built on **Claude Agent SDK** featuring Docker sandbox execution, OAuth connectors, skills system, and AI-powered agent creation.
+Build powerful AI agents with Claude. A platform built on **Claude Agent SDKgit ** featuring Docker sandbox execution, OAuth connectors, skills system, and AI-powered agent creation.
 
 ## ✨ Key Features
 

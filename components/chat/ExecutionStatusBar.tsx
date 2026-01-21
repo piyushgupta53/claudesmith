@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Loader2, CheckCircle2, X, Brain
+  Loader2, CheckCircle2, X, Brain, Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getToolDisplayName, getToolIcon, getBashCommandDescription } from '@/lib/utils/toolDisplayNames';
@@ -18,10 +18,17 @@ export interface ToolActivity {
   outputPreview?: string;
 }
 
+export interface ActiveSubagent {
+  name: string;
+  description: string;
+  startTime: string;
+}
+
 interface ExecutionStatusBarProps {
   activities: ToolActivity[];
   isStreaming: boolean;
   agentName: string;
+  activeSubagent?: ActiveSubagent | null;
 }
 
 function getToolDescription(toolName: string, input?: Record<string, unknown>): string {
@@ -69,9 +76,10 @@ function getToolDescription(toolName: string, input?: Record<string, unknown>): 
   return displayName;
 }
 
-export function ExecutionStatusBar({ activities, isStreaming, agentName }: ExecutionStatusBarProps) {
+export function ExecutionStatusBar({ activities, isStreaming, agentName, activeSubagent }: ExecutionStatusBarProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [thinkingElapsed, setThinkingElapsed] = useState(0);
+  const [subagentElapsed, setSubagentElapsed] = useState(0);
 
   // Get current running activity (running or slow)
   const runningActivity = activities.find(a => a.status === 'running' || a.status === 'slow');
@@ -82,6 +90,23 @@ export function ExecutionStatusBar({ activities, isStreaming, agentName }: Execu
 
   // Get the last completed tool for context
   const lastCompletedTool = recentCompleted.length > 0 ? recentCompleted[0] : null;
+
+  // Track subagent elapsed time
+  useEffect(() => {
+    if (!activeSubagent?.startTime) {
+      setSubagentElapsed(0);
+      return;
+    }
+
+    const startTime = new Date(activeSubagent.startTime).getTime();
+    const updateTimer = () => {
+      setSubagentElapsed(Math.floor((Date.now() - startTime) / 1000));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeSubagent?.startTime]);
 
   // Extract stable values for useEffect dependencies
   const runningActivityId = runningActivity?.id;
@@ -130,8 +155,31 @@ export function ExecutionStatusBar({ activities, isStreaming, agentName }: Execu
   const totalCompleted = activities.filter(a => a.status === 'completed').length;
   const totalRunning = activities.filter(a => a.status === 'running' || a.status === 'slow').length;
 
+  // Determine display context - show subagent name when active
+  const isSubagentActive = !!activeSubagent;
+  const displayIcon = isSubagentActive ? Users : (runningActivity ? ToolIcon : Brain);
+  const iconBgColor = isSubagentActive ? "bg-emerald-500/10" : (runningActivity ? "bg-primary/10" : "bg-amber-500/10");
+  const iconColor = isSubagentActive ? "text-emerald-500" : (runningActivity ? "text-primary" : "text-amber-500");
+  const pingColor = isSubagentActive ? "bg-emerald-500/20" : (runningActivity ? "bg-primary/20" : "bg-amber-500/20");
+
   return (
     <div className="border border-border/60 rounded-xl bg-card/50 backdrop-blur-sm overflow-hidden animate-fade-in">
+      {/* Subagent header - shown when a subagent is active */}
+      {isSubagentActive && (
+        <div className="px-4 py-2 border-b border-border/40 bg-emerald-500/5">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-medium text-emerald-500">{activeSubagent.name}</span>
+            <span className="text-xs text-emerald-500/70 font-mono">{subagentElapsed}s</span>
+            {activeSubagent.description && (
+              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                — {activeSubagent.description}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main status bar */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-3">
@@ -139,19 +187,12 @@ export function ExecutionStatusBar({ activities, isStreaming, agentName }: Execu
           <div className="relative flex-shrink-0">
             <div className={cn(
               "w-10 h-10 rounded-lg flex items-center justify-center",
-              runningActivity ? "bg-primary/10" : "bg-amber-500/10"
+              iconBgColor
             )}>
-              {runningActivity ? (
-                <>
-                  <span className="absolute inset-0 rounded-lg bg-primary/20 animate-ping" />
-                  <ToolIcon className="relative w-5 h-5 text-primary" />
-                </>
-              ) : (
-                <>
-                  <span className="absolute inset-0 rounded-lg bg-amber-500/20 animate-ping" />
-                  <Brain className="relative w-5 h-5 text-amber-500 animate-pulse" />
-                </>
-              )}
+              <>
+                <span className={cn("absolute inset-0 rounded-lg animate-ping", pingColor)} />
+                {React.createElement(displayIcon, { className: cn("relative w-5 h-5", iconColor) })}
+              </>
             </div>
           </div>
 
@@ -177,10 +218,12 @@ export function ExecutionStatusBar({ activities, isStreaming, agentName }: Execu
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-amber-500">
-                    {thinkingElapsed < 60 && lastCompletedTool
-                      ? `Analyzing ${getToolDisplayName(lastCompletedTool.name)} results...`
-                      : 'Thinking...'}
+                  <span className={cn("text-sm font-medium", isSubagentActive ? "text-emerald-500" : "text-amber-500")}>
+                    {isSubagentActive
+                      ? `${activeSubagent.name} processing...`
+                      : (thinkingElapsed < 60 && lastCompletedTool
+                        ? `Analyzing ${getToolDisplayName(lastCompletedTool.name)} results...`
+                        : 'Thinking...')}
                   </span>
                   <span className="text-xs font-mono text-amber-500/70">
                     {thinkingElapsed}s

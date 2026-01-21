@@ -34,6 +34,13 @@ export interface ToolActivity {
   endTime?: string;
   duration?: number;
   outputPreview?: string;
+  subagentName?: string; // Name of the subagent that ran this tool
+}
+
+export interface ActiveSubagent {
+  name: string;
+  description: string;
+  startTime: string;
 }
 
 // Tool is considered slow after this many milliseconds
@@ -60,6 +67,7 @@ export function useStreamingMessages(sessionId: string | null) {
   const [toolActivities, setToolActivities] = useState<ToolActivity[]>([]);
   const [streamingText, setStreamingText] = useState<string>('');
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [activeSubagent, setActiveSubagent] = useState<ActiveSubagent | null>(null);
   const { addMessage, setStreaming } = useChatStore();
   const { addToolCall, updateToolCall, addEvent, setExecution, addPermissionRequest, addQuestionRequest, addCheckpoint } = useExecutionStore();
   const executionTrackerRef = useRef<ExecutionTracker | null>(null);
@@ -77,6 +85,7 @@ export function useStreamingMessages(sessionId: string | null) {
     setToolActivities([]);
     setStreamingText('');
     setProgressData(null);
+    setActiveSubagent(null);
     currentPhaseRef.current = null;
     activeSubagentNamesRef.current = new Set(); // Clear active subagents for new session
 
@@ -388,6 +397,12 @@ export function useStreamingMessages(sessionId: string | null) {
               // Track active subagent for activity indicator
               const subagentName = data.subagentInfo?.agentType || 'Subagent';
               activeSubagentNamesRef.current.add(subagentName);
+              // Set active subagent state for UI components
+              setActiveSubagent({
+                name: subagentName,
+                description: data.subagentInfo?.description || '',
+                startTime: data.timestamp,
+              });
               // Show subagent in activity indicator
               setCurrentActivity({
                 type: 'subagent_running',
@@ -407,9 +422,15 @@ export function useStreamingMessages(sessionId: string | null) {
               }
               // Remove from active subagents tracking
               activeSubagentNamesRef.current.delete(data.subagentName);
-              // If other subagents are still running, show them; otherwise show analyzing
+              // If other subagents are still running, show them; otherwise clear active subagent
               if (activeSubagentNamesRef.current.size > 0) {
                 const remainingSubagents = Array.from(activeSubagentNamesRef.current);
+                // Update to first remaining subagent
+                setActiveSubagent({
+                  name: remainingSubagents[0],
+                  description: '',
+                  startTime: data.timestamp,
+                });
                 setCurrentActivity({
                   type: 'subagent_running',
                   description: `${remainingSubagents.join(', ')} working...`,
@@ -417,7 +438,8 @@ export function useStreamingMessages(sessionId: string | null) {
                   activeSubagents: remainingSubagents,
                 });
               } else {
-                // All subagents done, transition to analyzing
+                // All subagents done, clear active subagent and transition to analyzing
+                setActiveSubagent(null);
                 setCurrentActivity({
                   type: 'waiting_for_model',
                   description: `Analyzing ${data.subagentName} results...`,
@@ -580,6 +602,7 @@ export function useStreamingMessages(sessionId: string | null) {
     toolActivities,
     streamingText,
     progressData,
+    activeSubagent,
     startStreaming,
   };
 }

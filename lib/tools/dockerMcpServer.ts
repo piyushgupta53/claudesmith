@@ -101,6 +101,13 @@ function formatErrorWithHints(
       `Read access is available for /scratch, /skills, and /claude-cache.]`;
   }
 
+  // Check for directory errors (fallback if primary check fails)
+  if (errorMessage.toLowerCase().includes('is a directory')) {
+    return `Error in ${toolName}: ${errorMessage}\n\n` +
+      `[Hint: This path is a directory, not a file. Use Glob({ pattern: "*", path: "<directory>" }) ` +
+      `to list files, or Bash({ command: "ls -la <directory>" }) to see directory contents.]`;
+  }
+
   // Default: return error with generic hint
   return `Error in ${toolName}: ${errorMessage}`;
 }
@@ -235,6 +242,30 @@ Example: Read({ file_path: "/scratch/data.json" })`,
 
             const safePath = validation.sanitized!;
             console.log(`[DockerMCP] Read: ${safePath}`);
+
+            // Check if path is a directory first
+            const checkResult = await dockerService.executeCommand(
+              containerId,
+              `test -d ${shellEscape(safePath)} && echo "DIRECTORY" || echo "FILE"`,
+              '/scratch',
+              5000
+            );
+
+            if (checkResult.stdout.trim() === 'DIRECTORY') {
+              console.log(`[DockerMCP] Read blocked: path is a directory: ${safePath}`);
+              return {
+                content: [{
+                  type: 'text' as const,
+                  text: `Error: "${safePath}" is a directory, not a file.\n\n` +
+                        `To list directory contents, use:\n` +
+                        `- Glob({ pattern: "*", path: "${safePath}" })\n` +
+                        `- Bash({ command: "ls -la ${safePath}" })\n\n` +
+                        `To read a specific file, provide the full file path.`
+                }],
+                isError: true
+              };
+            }
+
             const content = await dockerService.readFile(containerId, safePath);
             const truncatedContent = truncateResult(content, maxResultSize, includeErrorHints);
             return {

@@ -92,6 +92,25 @@ const githubToolNames: Record<string, string> = {
 };
 
 /**
+ * Human-readable names for security analysis custom tools
+ * Maps tool names to semantic descriptions that explain what the tool is checking
+ */
+const securityToolNames: Record<string, string> = {
+  'check_owasp_top10': 'Checking OWASP vulnerabilities',
+  'analyze_dependencies': 'Analyzing dependencies',
+  'detect_hardcoded_secrets': 'Scanning for secrets',
+  'detect_secrets': 'Scanning for secrets',
+  'calculate_security_score': 'Calculating security score',
+  'check_sql_injection': 'Checking SQL injection',
+  'check_xss': 'Checking XSS vulnerabilities',
+  'check_auth': 'Checking authentication',
+  'scan_vulnerabilities': 'Scanning vulnerabilities',
+  'audit_permissions': 'Auditing permissions',
+  'check_encryption': 'Checking encryption',
+  'validate_input': 'Validating input handling',
+};
+
+/**
  * Convert technical tool names to human-readable labels.
  * Handles MCP tools (mcp__server__tool), custom tools, and built-in tools.
  */
@@ -127,7 +146,11 @@ export function getToolDisplayName(toolName: string): string {
 
     // Custom tools: mcp__custom-tools-{agentId}__{toolName}
     if (server.startsWith('custom-tools')) {
-      // Extract the actual tool name and format it
+      // Check if it's a known security tool first
+      if (securityToolNames[tool]) {
+        return securityToolNames[tool];
+      }
+      // Fallback: Extract the actual tool name and format it
       return tool
         .replace(/_/g, ' ')
         .replace(/-/g, ' ')

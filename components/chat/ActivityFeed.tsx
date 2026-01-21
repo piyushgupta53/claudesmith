@@ -266,27 +266,6 @@ function StatBadge({
   );
 }
 
-// Stagger variants for activity list
-const listVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.02,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, x: -12 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: springs.gentle,
-  },
-};
-
 export function ActivityFeed({ activities, isStreaming }: ActivityFeedProps) {
   const runningCount = activities.filter(a => a.status === 'running').length;
   const slowCount = activities.filter(a => a.status === 'slow').length;
@@ -376,19 +355,16 @@ export function ActivityFeed({ activities, isStreaming }: ActivityFeedProps) {
             </p>
           </motion.div>
         ) : (
-          <motion.div
-            className="relative pl-3 space-y-1"
-            variants={listVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <AnimatePresence mode="popLayout">
+          <motion.div className="relative pl-3 space-y-1">
+            <AnimatePresence mode="popLayout" initial={false}>
               {activities.map((activity) => (
                 <motion.div
                   key={activity.id}
-                  variants={itemVariants}
-                  layout
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20, transition: { duration: 0.15 } }}
+                  layout
+                  transition={springs.gentle}
                 >
                   <ActivityItem activity={activity} />
                 </motion.div>

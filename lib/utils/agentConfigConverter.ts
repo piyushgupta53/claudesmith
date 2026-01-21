@@ -680,6 +680,16 @@ The following guidelines are automatically applied to optimize performance and r
 - Files can only be written to /scratch directory
 - Read access: /scratch, /skills, /claude-cache
 - Use appropriate tools: Read for files, Grep for searching, Glob for finding
+
+### Structured Output (StructuredOutput tool)
+If you have access to the StructuredOutput tool, follow these rules EXACTLY:
+- Call StructuredOutput EXACTLY ONCE at the very end of your work
+- The ENTIRE output must be in a SINGLE tool call - do NOT split across multiple calls
+- Include ALL required properties in that one call
+- Complete all analysis work BEFORE calling StructuredOutput
+- If the output is large, that's OK - put it all in one call
+- WRONG: Multiple calls with partial objects (e.g., first call with "summary", second with "findings")
+- RIGHT: One call with complete object containing all required fields
 `;
 
 /**
@@ -717,7 +727,12 @@ Always confirm what you created and where.`,
  * Subagent collaboration guidelines - STRONG enforcement for orchestrators.
  * This ensures the model understands it MUST delegate and CANNOT perform analysis itself.
  */
-function getSubagentCollaborationGuidelines(subagentNames: string[], hasFileManager: boolean = true): string {
+function getSubagentCollaborationGuidelines(subagentNames: string[], hasFileManager: boolean = true, hasOutputFormat: boolean = false): string {
+  // Include StructuredOutput in available tools when outputFormat is configured
+  const structuredOutputTool = hasOutputFormat
+    ? '\n- **StructuredOutput** - to produce final output (call ONCE at the very end with complete data)'
+    : '';
+
   return `
 
 ---
@@ -728,7 +743,7 @@ function getSubagentCollaborationGuidelines(subagentNames: string[], hasFileMana
 ### Your ONLY Available Tools:
 - **Task** - to delegate work to subagents (THIS IS YOUR PRIMARY TOOL)
 - **TodoWrite** - to track progress
-- **AskUserQuestion** - to get user input
+- **AskUserQuestion** - to get user input${structuredOutputTool}
 
 ### Tools You DO NOT Have Access To (BLOCKED):
 - **WebSearch** - delegate research to subagents with WebSearch capability
@@ -831,9 +846,10 @@ function buildSystemPromptWithContext(
     injectPlatformGuidelines?: boolean;
     subagentNames?: string[];
     hasFileManager?: boolean;
+    hasOutputFormat?: boolean;
   } = {}
 ): string {
-  const { injectPlatformGuidelines = true, subagentNames = [], hasFileManager = false } = options;
+  const { injectPlatformGuidelines = true, subagentNames = [], hasFileManager = false, hasOutputFormat = false } = options;
 
   let finalPrompt = basePrompt;
 
@@ -849,8 +865,8 @@ function buildSystemPromptWithContext(
 
     // Add subagent collaboration guidelines if agent has subagents
     if (subagentNames.length > 0) {
-      finalPrompt += getSubagentCollaborationGuidelines(subagentNames, hasFileManager);
-      console.log(`[AgentConfig] Injected subagent collaboration guidelines for: ${subagentNames.join(', ')} (FileManager: ${hasFileManager ? 'yes' : 'no'})`);
+      finalPrompt += getSubagentCollaborationGuidelines(subagentNames, hasFileManager, hasOutputFormat);
+      console.log(`[AgentConfig] Injected subagent collaboration guidelines for: ${subagentNames.join(', ')} (FileManager: ${hasFileManager ? 'yes' : 'no'}, OutputFormat: ${hasOutputFormat ? 'yes' : 'no'})`);
     }
   }
 
@@ -1365,6 +1381,7 @@ ${migratedConfig.customTools && migratedConfig.customTools.length > 0 ? `- Custo
       injectPlatformGuidelines,
       subagentNames,
       hasFileManager: orchestratorHasFileManager,
+      hasOutputFormat: !!migratedConfig.outputFormat,
     }
   );
 

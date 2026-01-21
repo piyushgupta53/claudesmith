@@ -38,7 +38,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   const { getAgent } = useAgentStore();
   const { getSession, getMessages, createSession, updateSession } = useChatStore();
   const { getPendingPermissions, removePermissionRequest, getPendingQuestions, removeQuestionRequest, getCheckpoints } = useExecutionStore();
-  const { isStreaming, error, currentActivity, toolActivities, streamingText, progressData, startStreaming } = useStreamingMessages(sessionId);
+  const { isStreaming, error, currentActivity, toolActivities, streamingText, progressData, activeSubagent, startStreaming } = useStreamingMessages(sessionId);
 
   const [agentId, setAgentId] = useState<string | null>(null);
   const [currentModel, setCurrentModel] = useState<'sonnet' | 'opus' | 'haiku' | undefined>();
@@ -321,6 +321,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
                         activities={toolActivities}
                         isStreaming={isStreaming}
                         agentName={agent.name}
+                        activeSubagent={activeSubagent}
                       />
                     </motion.div>
                   )}
@@ -432,78 +433,81 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
         </div>
       </div>
 
-      {/* Right Panel */}
+      {/* Right Panel - Always mounted, visibility controlled by CSS */}
       <div
         className={cn(
           'border-l border-border bg-card/50 flex flex-col transition-all duration-300 ease-smooth overflow-hidden',
           showPanel ? 'w-80' : 'w-0'
         )}
       >
-        {showPanel && (
-          <div className="flex flex-col h-full animate-slide-in-right">
-            {/* Panel Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <div className="flex gap-1 p-0.5 bg-muted/30 rounded-lg">
-                <button
-                  onClick={() => setActivePanel('activity')}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
-                    activePanel === 'activity'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <Activity className="w-3 h-3" />
-                  Activity
-                </button>
-                <button
-                  onClick={() => setActivePanel('files')}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
-                    activePanel === 'files'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <FolderOpen className="w-3 h-3" />
-                  Files
-                </button>
-                {agent.settings?.enableFileCheckpointing && (
-                  <button
-                    onClick={() => setActivePanel('checkpoints')}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
-                      activePanel === 'checkpoints'
-                        ? 'bg-card text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <History className="w-3 h-3" />
-                    History
-                  </button>
+        <div
+          className={cn(
+            'flex flex-col h-full w-80 transition-opacity duration-200',
+            showPanel ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          {/* Panel Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex gap-1 p-0.5 bg-muted/30 rounded-lg">
+              <button
+                onClick={() => setActivePanel('activity')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
+                  activePanel === 'activity'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={togglePanel}
               >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Panel Content */}
-            <div className="flex-1 overflow-hidden">
-              {activePanel === 'activity' ? (
-                <ActivityFeed activities={toolActivities} isStreaming={isStreaming} />
-              ) : activePanel === 'files' ? (
-                <FilesystemBrowser sessionId={sessionId} isStreaming={isStreaming} />
-              ) : (
-                <CheckpointPanel sessionId={sessionId} isStreaming={isStreaming} />
+                <Activity className="w-3 h-3" />
+                Activity
+              </button>
+              <button
+                onClick={() => setActivePanel('files')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
+                  activePanel === 'files'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <FolderOpen className="w-3 h-3" />
+                Files
+              </button>
+              {agent.settings?.enableFileCheckpointing && (
+                <button
+                  onClick={() => setActivePanel('checkpoints')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
+                    activePanel === 'checkpoints'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <History className="w-3 h-3" />
+                  History
+                </button>
               )}
             </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={togglePanel}
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
-        )}
+
+          {/* Panel Content */}
+          <div className="flex-1 overflow-hidden">
+            {activePanel === 'activity' ? (
+              <ActivityFeed activities={toolActivities} isStreaming={isStreaming} />
+            ) : activePanel === 'files' ? (
+              <FilesystemBrowser sessionId={sessionId} isStreaming={isStreaming} />
+            ) : (
+              <CheckpointPanel sessionId={sessionId} isStreaming={isStreaming} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
