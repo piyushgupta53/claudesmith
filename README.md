@@ -2,26 +2,26 @@
 
 Build powerful AI agents with Claude. A platform built on **Claude Agent SDK** featuring Docker sandbox execution, OAuth connectors, skills system, and AI-powered agent creation.
 
-## 🎬 Demo
+## Demo
 
 https://github.com/user-attachments/assets/cd3b23b4-9334-4dec-a184-e732177ee158
 
-## ✨ Key Features
+## Key Features
 
-### 🚀 Instant Mode - AI-Powered Agent Creation
+### Instant Mode - AI-Powered Agent Creation
 - **Natural Language to Agent**: Describe what you want in plain English
 - **Smart Generation**: AI selects tools, skills, and creates optimized prompts
 - **10-Second Setup**: From idea to working agent in seconds
 - **One-Click Deploy**: Launch immediately or customize further
 
-### 🐳 Docker Sandbox Execution
+### Docker Sandbox Execution
 - **Isolated Containers**: Safe execution environment per session
 - **File Operations**: Read files, write to `/scratch` workspace
 - **Bash Commands**: Execute whitelisted shell commands with security validation
 - **Multi-Mount Architecture**: `/scratch` (read-write), `/skills` (read-only)
 - **Security Layers**: Command validation, path sanitization, network restrictions
 
-### 🔗 OAuth Connectors
+### OAuth Connectors
 Connect your agents to external services with secure OAuth authentication:
 - **Gmail** - List and read emails
 - **Google Drive** - List, read, and search files
@@ -29,13 +29,13 @@ Connect your agents to external services with secure OAuth authentication:
 - **Notion** - Search and read pages
 - **GitHub** - List repos, get details, list issues
 
-### 📚 Skills System
+### Skills System
 - **Pre-Built Knowledge**: Professional skills (data-analysis, code-review, research, scripting)
 - **Markdown-Based**: Readable, version-controllable markdown files
 - **Auto-Injection**: Enabled skills automatically added to agent context
 - **Custom Skills**: Create your own domain-specific knowledge modules
 
-### 🎛️ Advanced Agent Builder
+### Advanced Agent Builder
 1. **Details** - Name, description, model, category, icon, color
 2. **System Prompt** - Multi-panel editor with templates
 3. **Tools** - Enable/disable sandbox and API tools
@@ -50,7 +50,7 @@ Connect your agents to external services with secure OAuth authentication:
 12. **Error Handling** - Retry logic, fallbacks, recovery
 13. **Settings** - Turns, budget, permissions, checkpointing
 
-### 💬 Rich Chat Interface
+### Rich Chat Interface
 - **Streaming Responses** - Real-time text generation with thinking indicators
 - **Specialized Cards**: Enhanced visualization for sandbox operations
   - **Bash Execution**: Commands with color-coded exit status, stdout/stderr
@@ -131,7 +131,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 2. Configure all tabs with full control
 3. Save and launch
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 claudesmith/
@@ -167,7 +167,7 @@ claudesmith/
 └── .claude/skills/         # SDK-native skills directory
 ```
 
-## 🔧 Available Tools
+## Available Tools
 
 ### Sandbox Tools (Docker MCP Server)
 Executed in isolated Docker containers:
@@ -200,7 +200,7 @@ Executed in isolated Docker containers:
 | Notion | `notion_search`, `notion_read_page` |
 | GitHub | `github_list_repos`, `github_get_repo`, `github_list_issues` |
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
