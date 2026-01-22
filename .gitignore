@@ -42,3 +42,12 @@ next-env.d.ts
 *.md
 !README.md
 !CLAUDE.md
+
+# Remotion demo video
+/demo-video/
+.cursor
+.gemini
+.agent
+.agents
+__tests__
+.swc

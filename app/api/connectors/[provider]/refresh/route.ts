@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import type { OAuthProvider, OAuthTokens } from '@/lib/types/connector';
+import type { OAuthTokens } from '@/lib/types/connector';
 import {
-  getProviderConfig,
-  getProviderCredentials,
-  getAllProviders,
-} from '@/lib/connectors/providers';
+  validateOAuthProvider,
+  validationErrorResponse,
+} from '@/lib/utils/oauthMiddleware';
 
 interface RouteParams {
   params: Promise<{
@@ -17,26 +16,16 @@ interface RouteParams {
  * Refresh OAuth tokens
  */
 export async function POST(request: Request, { params }: RouteParams) {
-  const { provider } = await params;
+  const { provider: providerParam } = await params;
 
   try {
-    // Validate provider
-    const validProviders = getAllProviders();
-    if (!validProviders.includes(provider as OAuthProvider)) {
-      return NextResponse.json(
-        { error: `Invalid provider: ${provider}` },
-        { status: 400 }
-      );
+    // Validate provider and get configuration
+    const validation = validateOAuthProvider(providerParam);
+    if (!validation.valid) {
+      return validationErrorResponse(validation);
     }
 
-    // Get credentials
-    const credentials = getProviderCredentials(provider as OAuthProvider);
-    if (!credentials) {
-      return NextResponse.json(
-        { error: `${provider} OAuth credentials not configured` },
-        { status: 400 }
-      );
-    }
+    const { credentials, config } = validation;
 
     // Parse request body
     const body = await request.json();
@@ -48,9 +37,6 @@ export async function POST(request: Request, { params }: RouteParams) {
         { status: 400 }
       );
     }
-
-    // Get provider config
-    const config = getProviderConfig(provider as OAuthProvider);
 
     // Build refresh token request
     const requestBody: Record<string, string> = {

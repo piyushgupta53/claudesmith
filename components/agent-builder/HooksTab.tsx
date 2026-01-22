@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -350,24 +350,39 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
   const [hookCode, setHookCode] = useState('');
   const [hookMatcher, setHookMatcher] = useState('');
 
-  const hooks = config.hooks || {};
+  // PERFORMANCE: Memoize hooks to stabilize dependency arrays
+  const hooks = useMemo(() => config.hooks || {}, [config.hooks]);
 
-  const addHook = (event: HookEvent) => {
+  // PERFORMANCE: Memoize filtered preset categories to avoid recalculation on every render
+  const safetyPresets = useMemo(() =>
+    Object.entries(HOOK_PRESETS).filter(([, preset]) => preset.category === 'safety'),
+    []
+  );
+  const loggingPresets = useMemo(() =>
+    Object.entries(HOOK_PRESETS).filter(([, preset]) => preset.category === 'logging'),
+    []
+  );
+  const utilityPresets = useMemo(() =>
+    Object.entries(HOOK_PRESETS).filter(([, preset]) => preset.category === 'utility'),
+    []
+  );
+
+  const addHook = useCallback((event: HookEvent) => {
     setEditingHook({ event, index: -1 }); // -1 means new hook
     setHookCode('');
     setHookMatcher('');
-  };
+  }, []);
 
-  const editHook = (event: HookEvent, index: number) => {
+  const editHook = useCallback((event: HookEvent, index: number) => {
     const hook = hooks[event]?.[index];
     if (hook) {
       setEditingHook({ event, index });
       setHookCode(hook.code);
       setHookMatcher(hook.matcher || '');
     }
-  };
+  }, [hooks]);
 
-  const saveHook = () => {
+  const saveHook = useCallback(() => {
     if (!editingHook || !hookCode.trim()) return;
 
     const { event, index } = editingHook;
@@ -398,9 +413,9 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
     setEditingHook(null);
     setHookCode('');
     setHookMatcher('');
-  };
+  }, [editingHook, hookCode, hookMatcher, hooks, onChange]);
 
-  const deleteHook = (event: HookEvent, index: number) => {
+  const deleteHook = useCallback((event: HookEvent, index: number) => {
     const currentHooks = hooks[event] || [];
     const updatedHooks = currentHooks.filter((_, i) => i !== index);
 
@@ -415,9 +430,9 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
         }
       });
     }
-  };
+  }, [hooks, onChange]);
 
-  const loadPreset = (presetKey: string) => {
+  const loadPreset = useCallback((presetKey: string) => {
     const preset = HOOK_PRESETS[presetKey];
     if (preset) {
       setEditingHook({ event: preset.event, index: -1 });
@@ -425,17 +440,17 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
       setHookMatcher(preset.matcher || '');
       setShowPresets(false);
     }
-  };
+  }, []);
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setEditingHook(null);
     setHookCode('');
     setHookMatcher('');
-  };
+  }, []);
 
-  const getHookCount = () => {
+  const getHookCount = useCallback(() => {
     return Object.values(hooks).reduce((sum, eventHooks) => sum + eventHooks.length, 0);
-  };
+  }, [hooks]);
 
   return (
     <div className="space-y-6">
@@ -492,9 +507,7 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
                 <span className="text-xs text-muted-foreground">(Recommended)</span>
               </div>
               <div className="space-y-2">
-                {Object.entries(HOOK_PRESETS)
-                  .filter(([, preset]) => preset.category === 'safety')
-                  .map(([key, preset]) => (
+                {safetyPresets.map(([key, preset]) => (
                   <button
                     key={key}
                     type="button"
@@ -519,9 +532,7 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Logging</div>
               <div className="space-y-2">
-                {Object.entries(HOOK_PRESETS)
-                  .filter(([, preset]) => preset.category === 'logging')
-                  .map(([key, preset]) => (
+                {loggingPresets.map(([key, preset]) => (
                   <button
                     key={key}
                     type="button"
@@ -546,9 +557,7 @@ export function HooksTab({ config, onChange }: HooksTabProps) {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Utility</div>
               <div className="space-y-2">
-                {Object.entries(HOOK_PRESETS)
-                  .filter(([, preset]) => preset.category === 'utility')
-                  .map(([key, preset]) => (
+                {utilityPresets.map(([key, preset]) => (
                   <button
                     key={key}
                     type="button"

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ChatSession, ChatMessage } from '../types/chat';
+import { addAndTruncate } from '../utils/arrayUtils';
 
 // PERFORMANCE FIX: Limit to prevent unbounded memory growth
 // Sessions with 1000+ messages can severely degrade performance
@@ -98,12 +99,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   addMessage: (sessionId, message) => set((state) => {
-    let sessionMessages = state.messages.get(sessionId) || [];
-    sessionMessages = [...sessionMessages, message];
+    const currentMessages = state.messages.get(sessionId) || [];
     // PERFORMANCE FIX: FIFO eviction to prevent unbounded growth
-    if (sessionMessages.length > MAX_MESSAGES_PER_SESSION) {
-      sessionMessages = sessionMessages.slice(-MAX_MESSAGES_PER_SESSION);
-    }
+    const sessionMessages = addAndTruncate(currentMessages, message, MAX_MESSAGES_PER_SESSION);
     const newMessages = new Map(state.messages);
     newMessages.set(sessionId, sessionMessages);
 

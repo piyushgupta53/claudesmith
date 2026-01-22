@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useChatStore } from '@/lib/stores/chatStore';
 import { useRouter } from 'next/navigation';
 import { MessageCircle, Clock, Trash2, Bot, Sparkles, MoreHorizontal } from 'lucide-react';
@@ -29,12 +29,12 @@ export function SessionList() {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
 
-  const handleSessionClick = (sessionId: string) => {
+  const handleSessionClick = useCallback((sessionId: string) => {
     setActiveSession(sessionId);
     router.push(`/chat/${sessionId}`);
-  };
+  }, [setActiveSession, router]);
 
-  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+  const handleDeleteSession = useCallback(async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (!confirm('Delete this session? This will also destroy any associated Docker container.')) {
@@ -56,9 +56,9 @@ export function SessionList() {
     }
 
     setDeletingSessionId(null);
-  };
+  }, [deleteSession, activeSessionId, router]);
 
-  const formatTimestamp = (timestamp: string) => {
+  const formatTimestamp = useCallback((timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -71,24 +71,26 @@ export function SessionList() {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
-  };
+  }, []);
 
-  // Group sessions by date
-  const groupedSessions = sessions.reduce((groups, session) => {
-    const date = new Date(session.updatedAt);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  // PERFORMANCE: Memoize grouped sessions to prevent recalculation on every render
+  const groupedSessions = useMemo(() => {
+    return sessions.reduce((groups, session) => {
+      const date = new Date(session.updatedAt);
+      const now = new Date();
+      const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
 
-    let group: string;
-    if (diffDays === 0) group = 'Today';
-    else if (diffDays === 1) group = 'Yesterday';
-    else if (diffDays < 7) group = 'This Week';
-    else group = 'Older';
+      let group: string;
+      if (diffDays === 0) group = 'Today';
+      else if (diffDays === 1) group = 'Yesterday';
+      else if (diffDays < 7) group = 'This Week';
+      else group = 'Older';
 
-    if (!groups[group]) groups[group] = [];
-    groups[group].push(session);
-    return groups;
-  }, {} as Record<string, typeof sessions>);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(session);
+      return groups;
+    }, {} as Record<string, typeof sessions>);
+  }, [sessions]);
 
   return (
     <div className="flex flex-col h-full">

@@ -49,7 +49,7 @@ export async function GET(
   let agentConfig;
   let prompt;
 
-  const storedConfig = sessionConfigStore.get(sessionId);
+  const storedConfig = await sessionConfigStore.get(sessionId);
   if (storedConfig) {
     console.log(`[Stream] Using stored config for session ${sessionId}`);
     agentConfig = storedConfig.agentConfig;

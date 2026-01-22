@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { OAuthProvider, OAuthTokens, OAuthConnection } from '@/lib/types/connector';
+import { getProviderConfig } from '@/lib/connectors/providers';
 import {
-  getProviderConfig,
-  getProviderCredentials,
-  getRedirectUri,
-  getAllProviders,
-} from '@/lib/connectors/providers';
+  validateOAuthProvider,
+} from '@/lib/utils/oauthMiddleware';
 
 interface RouteParams {
   params: Promise<{
@@ -47,27 +45,21 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.redirect(settingsUrl.toString());
   }
 
-  // Validate provider
-  const validProviders = getAllProviders();
-  if (!validProviders.includes(provider as OAuthProvider)) {
-    settingsUrl.searchParams.set('error', 'invalid_provider');
+  // Validate provider using centralized middleware
+  const validation = validateOAuthProvider(provider);
+  if (!validation.valid) {
+    settingsUrl.searchParams.set('error', validation.status === 400 && validation.error.includes('credentials')
+      ? 'not_configured'
+      : 'invalid_provider');
     return NextResponse.redirect(settingsUrl.toString());
   }
 
   try {
-    // Get credentials
-    const credentials = getProviderCredentials(provider as OAuthProvider);
-    if (!credentials) {
-      settingsUrl.searchParams.set('error', 'not_configured');
-      return NextResponse.redirect(settingsUrl.toString());
-    }
-
-    const config = getProviderConfig(provider as OAuthProvider);
-    const redirectUri = getRedirectUri(provider as OAuthProvider);
+    const { credentials, config, redirectUri, provider: validatedProvider } = validation;
 
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(
-      provider as OAuthProvider,
+      validatedProvider,
       code,
       redirectUri,
       credentials
@@ -76,7 +68,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Fetch user info if available
     let userInfo: OAuthConnection['userInfo'] | undefined;
     if (config.userInfoUrl) {
-      userInfo = await fetchUserInfo(provider as OAuthProvider, tokens.accessToken);
+      userInfo = await fetchUserInfo(validatedProvider, tokens.accessToken);
     }
 
     // Build success redirect with token data

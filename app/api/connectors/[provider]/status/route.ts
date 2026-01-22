@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import type { OAuthProvider } from '@/lib/types/connector';
-import { getProviderCredentials, getAllProviders } from '@/lib/connectors/providers';
+import {
+  validateOAuthProvider,
+} from '@/lib/utils/oauthMiddleware';
 
 interface RouteParams {
   params: Promise<{
@@ -13,25 +14,33 @@ interface RouteParams {
  * Check if a provider is configured (has OAuth credentials)
  */
 export async function GET(request: Request, { params }: RouteParams) {
-  const { provider } = await params;
+  const { provider: providerParam } = await params;
 
-  // Validate provider
-  const validProviders = getAllProviders();
-  if (!validProviders.includes(provider as OAuthProvider)) {
-    return NextResponse.json(
-      { error: `Invalid provider: ${provider}` },
-      { status: 400 }
-    );
+  // Validate provider and get configuration
+  const validation = validateOAuthProvider(providerParam);
+
+  // For status endpoint, we differentiate between invalid provider and unconfigured
+  if (!validation.valid) {
+    // Check if it's an invalid provider (not just missing credentials)
+    if (validation.error.includes('Invalid provider')) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: validation.status }
+      );
+    }
+
+    // Provider is valid but not configured
+    return NextResponse.json({
+      provider: providerParam,
+      configured: false,
+      message: 'Provider credentials not found in environment variables',
+    });
   }
 
-  const credentials = getProviderCredentials(provider as OAuthProvider);
-  const configured = credentials !== null;
-
+  // Provider is configured
   return NextResponse.json({
-    provider,
-    configured,
-    message: configured
-      ? 'Provider is configured'
-      : 'Provider credentials not found in environment variables',
+    provider: validation.provider,
+    configured: true,
+    message: 'Provider is configured',
   });
 }

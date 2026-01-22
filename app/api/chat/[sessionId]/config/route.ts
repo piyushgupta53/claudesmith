@@ -31,7 +31,7 @@ export async function POST(
     }
 
     // Store the config
-    sessionConfigStore.store(sessionId, agentConfig, prompt);
+    await sessionConfigStore.store(sessionId, agentConfig, prompt);
 
     return NextResponse.json({
       success: true,
@@ -57,7 +57,7 @@ export async function DELETE(
 ) {
   const { sessionId } = params;
 
-  sessionConfigStore.clear(sessionId);
+  await sessionConfigStore.clear(sessionId);
 
   return NextResponse.json({
     success: true,

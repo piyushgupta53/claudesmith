@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -402,7 +402,22 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
   const [toolHandler, setToolHandler] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  const customTools = config.customTools || [];
+  // PERFORMANCE: Memoize customTools to stabilize dependency arrays
+  const customTools = useMemo(() => config.customTools || [], [config.customTools]);
+
+  // PERFORMANCE: Memoize filtered preset categories to avoid recalculation on every render
+  const dataPresets = useMemo(() =>
+    Object.entries(TOOL_PRESETS).filter(([, preset]) => preset.category === 'data'),
+    []
+  );
+  const textPresets = useMemo(() =>
+    Object.entries(TOOL_PRESETS).filter(([, preset]) => preset.category === 'text'),
+    []
+  );
+  const utilityPresets = useMemo(() =>
+    Object.entries(TOOL_PRESETS).filter(([, preset]) => preset.category === 'utility'),
+    []
+  );
 
   // Validation states
   const nameValidation = validateToolName(toolName, customTools.map(t => t.name), editingTool?.index ?? -1);
@@ -414,7 +429,7 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
                   codeValidation.valid &&
                   toolDescription.trim().length > 0;
 
-  const addTool = () => {
+  const addTool = useCallback(() => {
     setEditingTool({ index: -1 });
     setToolName('');
     setToolDescription('');
@@ -424,9 +439,9 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
       required: []
     }, null, 2));
     setToolHandler('// Access args.propertyName for input parameters\n// Return a string or { content: [{ type: "text", text: "..." }] }\n\nreturn `Hello!`;');
-  };
+  }, []);
 
-  const editTool = (index: number) => {
+  const editTool = useCallback((index: number) => {
     const tool = customTools[index];
     if (tool) {
       setEditingTool({ index });
@@ -435,9 +450,17 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
       setToolSchema(JSON.stringify(tool.inputSchema, null, 2));
       setToolHandler(tool.handler);
     }
-  };
+  }, [customTools]);
 
-  const saveTool = () => {
+  const cancelEdit = useCallback(() => {
+    setEditingTool(null);
+    setToolName('');
+    setToolDescription('');
+    setToolSchema('');
+    setToolHandler('');
+  }, []);
+
+  const saveTool = useCallback(() => {
     if (!canSave || !schemaValidation.schema) return;
 
     const newTool: CustomTool = {
@@ -459,15 +482,15 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
 
     onChange({ customTools: updatedTools });
     cancelEdit();
-  };
+  }, [canSave, schemaValidation.schema, toolName, toolDescription, toolHandler, editingTool, customTools, onChange, cancelEdit]);
 
-  const deleteTool = (index: number) => {
+  const deleteTool = useCallback((index: number) => {
     const updatedTools = customTools.filter((_, i) => i !== index);
     onChange({ customTools: updatedTools.length > 0 ? updatedTools : undefined });
     setDeleteConfirm(null);
-  };
+  }, [customTools, onChange]);
 
-  const loadPreset = (presetKey: string) => {
+  const loadPreset = useCallback((presetKey: string) => {
     const preset = TOOL_PRESETS[presetKey];
     if (preset) {
       setEditingTool({ index: -1 });
@@ -477,17 +500,9 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
       setToolHandler(preset.tool.handler);
       setShowPresets(false);
     }
-  };
+  }, []);
 
-  const cancelEdit = () => {
-    setEditingTool(null);
-    setToolName('');
-    setToolDescription('');
-    setToolSchema('');
-    setToolHandler('');
-  };
-
-  const getToolCount = () => customTools.length;
+  const getToolCount = useCallback(() => customTools.length, [customTools]);
 
   return (
     <div className="space-y-6">
@@ -550,9 +565,7 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Data Processing</div>
               <div className="space-y-2">
-                {Object.entries(TOOL_PRESETS)
-                  .filter(([, preset]) => preset.category === 'data')
-                  .map(([key, preset]) => (
+                {dataPresets.map(([key, preset]) => (
                   <button
                     key={key}
                     type="button"
@@ -576,9 +589,7 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Text Processing</div>
               <div className="space-y-2">
-                {Object.entries(TOOL_PRESETS)
-                  .filter(([, preset]) => preset.category === 'text')
-                  .map(([key, preset]) => (
+                {textPresets.map(([key, preset]) => (
                   <button
                     key={key}
                     type="button"
@@ -602,9 +613,7 @@ export function CustomToolsTab({ config, onChange }: CustomToolsTabProps) {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Utility</div>
               <div className="space-y-2">
-                {Object.entries(TOOL_PRESETS)
-                  .filter(([, preset]) => preset.category === 'utility')
-                  .map(([key, preset]) => (
+                {utilityPresets.map(([key, preset]) => (
                   <button
                     key={key}
                     type="button"

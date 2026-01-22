@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { OAuthProvider, OAuthState } from '@/lib/types/connector';
 import {
-  getProviderConfig,
-  getProviderCredentials,
-  getRedirectUri,
-  getAllProviders,
-} from '@/lib/connectors/providers';
+  validateOAuthProvider,
+  validationErrorResponse,
+} from '@/lib/utils/oauthMiddleware';
 
 interface RouteParams {
   params: Promise<{
@@ -52,34 +50,20 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
  * Start OAuth flow - returns authorization URL
  */
 export async function POST(request: Request, { params }: RouteParams) {
-  const { provider } = await params;
+  const { provider: providerParam } = await params;
 
   try {
-    // Validate provider
-    const validProviders = getAllProviders();
-    if (!validProviders.includes(provider as OAuthProvider)) {
-      return NextResponse.json(
-        { error: `Invalid provider: ${provider}` },
-        { status: 400 }
-      );
+    // Validate provider and get configuration
+    const validation = validateOAuthProvider(providerParam);
+    if (!validation.valid) {
+      return validationErrorResponse(validation);
     }
 
-    // Get credentials
-    const credentials = getProviderCredentials(provider as OAuthProvider);
-    if (!credentials) {
-      return NextResponse.json(
-        { error: `${provider} OAuth credentials not configured` },
-        { status: 400 }
-      );
-    }
+    const { provider, credentials, config, redirectUri } = validation;
 
     // Parse request body
     const body = await request.json();
     const { scopes = [] } = body;
-
-    // Get provider config
-    const config = getProviderConfig(provider as OAuthProvider);
-    const redirectUri = getRedirectUri(provider as OAuthProvider);
 
     // Generate state and PKCE
     const stateNonce = generateStateNonce();
@@ -93,7 +77,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Build OAuth state (to be stored client-side)
     const oauthState: OAuthState = {
-      provider: provider as OAuthProvider,
+      provider,
       redirectUri,
       codeVerifier,
       scopes,

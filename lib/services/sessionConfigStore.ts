@@ -3,10 +3,12 @@
  *
  * Stores agent configurations server-side to avoid URL length limits.
  * Uses file-based storage to persist across Next.js API route invocations.
+ *
+ * PERFORMANCE: Uses async fs/promises to prevent blocking during streaming.
  */
 
 import type { AgentConfig } from '../types/agent';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 
 interface StoredConfig {
@@ -18,14 +20,30 @@ interface StoredConfig {
 // Directory for storing session configs
 const CONFIG_DIR = path.join(process.cwd(), '.scratch', '_session_configs');
 
-// Ensure config directory exists
-function ensureConfigDir(): void {
-  if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+// Track if directory has been ensured (avoid repeated checks)
+let configDirEnsured = false;
+
+/**
+ * Ensure config directory exists (async)
+ */
+async function ensureConfigDir(): Promise<void> {
+  if (configDirEnsured) return;
+
+  try {
+    await fs.mkdir(CONFIG_DIR, { recursive: true });
+    configDirEnsured = true;
+  } catch (error: any) {
+    // Directory already exists is fine
+    if (error.code !== 'EEXIST') {
+      throw error;
+    }
+    configDirEnsured = true;
   }
 }
 
-// Get config file path for a session
+/**
+ * Get config file path for a session
+ */
 function getConfigPath(sessionId: string): string {
   // Sanitize sessionId to prevent path traversal
   const safeSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -33,14 +51,14 @@ function getConfigPath(sessionId: string): string {
 }
 
 /**
- * Store config for a session
+ * Store config for a session (async)
  */
-export function storeSessionConfig(
+export async function storeSessionConfig(
   sessionId: string,
   agentConfig: AgentConfig & { resolvedMcpServers?: any[] },
   prompt: string
-): void {
-  ensureConfigDir();
+): Promise<void> {
+  await ensureConfigDir();
 
   const config: StoredConfig = {
     agentConfig,
@@ -49,50 +67,61 @@ export function storeSessionConfig(
   };
 
   const configPath = getConfigPath(sessionId);
-  fs.writeFileSync(configPath, JSON.stringify(config), 'utf-8');
+  await fs.writeFile(configPath, JSON.stringify(config), 'utf-8');
 
   console.log(`[SessionConfigStore] Stored config for session ${sessionId} (${JSON.stringify(agentConfig).length} bytes) at ${configPath}`);
 }
 
 /**
- * Get config for a session
+ * Get config for a session (async)
  */
-export function getSessionConfig(sessionId: string): StoredConfig | null {
+export async function getSessionConfig(sessionId: string): Promise<StoredConfig | null> {
   const configPath = getConfigPath(sessionId);
 
-  if (!fs.existsSync(configPath)) {
-    console.log(`[SessionConfigStore] No config found for session ${sessionId} at ${configPath}`);
-    return null;
-  }
-
   try {
-    const content = fs.readFileSync(configPath, 'utf-8');
+    const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(content) as StoredConfig;
     console.log(`[SessionConfigStore] Retrieved config for session ${sessionId}`);
     return config;
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`[SessionConfigStore] No config found for session ${sessionId} at ${configPath}`);
+      return null;
+    }
     console.error(`[SessionConfigStore] Error reading config for session ${sessionId}:`, error);
     return null;
   }
 }
 
 /**
- * Clear config for a session
+ * Clear config for a session (async)
  */
-export function clearSessionConfig(sessionId: string): void {
+export async function clearSessionConfig(sessionId: string): Promise<void> {
   const configPath = getConfigPath(sessionId);
 
-  if (fs.existsSync(configPath)) {
-    fs.unlinkSync(configPath);
+  try {
+    await fs.unlink(configPath);
     console.log(`[SessionConfigStore] Cleared config for session ${sessionId}`);
+  } catch (error: any) {
+    // Ignore if file doesn't exist
+    if (error.code !== 'ENOENT') {
+      console.error(`[SessionConfigStore] Error clearing config for session ${sessionId}:`, error);
+    }
   }
 }
 
 /**
- * Check if config exists for a session
+ * Check if config exists for a session (async)
  */
-export function hasSessionConfig(sessionId: string): boolean {
-  return fs.existsSync(getConfigPath(sessionId));
+export async function hasSessionConfig(sessionId: string): Promise<boolean> {
+  const configPath = getConfigPath(sessionId);
+
+  try {
+    await fs.access(configPath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export const sessionConfigStore = {

@@ -34,6 +34,10 @@ const STORAGE_KEYS = {
 class StorageService {
   private db: IDBPDatabase<AgentPlatformDB> | null = null;
 
+  // PERFORMANCE: Cache for agents to avoid repeated localStorage parsing
+  private agentsCache: Map<string, AgentConfig> | null = null;
+  private agentsCacheValid: boolean = false;
+
   // Initialize IndexedDB
   async initDB(): Promise<void> {
     if (this.db) return;
@@ -68,38 +72,83 @@ class StorageService {
   // Agent Operations (LocalStorage)
   // ============================================
 
+  /**
+   * Save an agent to localStorage.
+   * PERFORMANCE: Uses cached agents map to avoid re-parsing.
+   */
   async saveAgent(agent: AgentConfig): Promise<void> {
     const agents = await this.getAllAgents();
     agents.set(agent.id, agent);
-
-    const agentsArray = Array.from(agents.values());
-    localStorage.setItem(STORAGE_KEYS.AGENTS, JSON.stringify(agentsArray));
+    this.persistAgents(agents);
   }
 
+  /**
+   * Get a single agent by ID.
+   * PERFORMANCE: Uses cached agents map.
+   */
   async getAgent(id: string): Promise<AgentConfig | null> {
     const agents = await this.getAllAgents();
     return agents.get(id) || null;
   }
 
+  /**
+   * Get all agents from localStorage with caching.
+   * PERFORMANCE: Uses in-memory cache to avoid repeated JSON parsing.
+   */
   async getAllAgents(): Promise<Map<string, AgentConfig>> {
+    // Return cached data if valid
+    if (this.agentsCacheValid && this.agentsCache) {
+      return new Map(this.agentsCache);
+    }
+
     const stored = localStorage.getItem(STORAGE_KEYS.AGENTS);
-    if (!stored) return new Map();
+    if (!stored) {
+      this.agentsCache = new Map();
+      this.agentsCacheValid = true;
+      return new Map();
+    }
 
     try {
       const agentsArray: AgentConfig[] = JSON.parse(stored);
-      return new Map(agentsArray.map(agent => [agent.id, agent]));
+      this.agentsCache = new Map(agentsArray.map(agent => [agent.id, agent]));
+      this.agentsCacheValid = true;
+      return new Map(this.agentsCache);
     } catch (error) {
       console.error('Failed to parse agents from localStorage:', error);
+      this.agentsCache = new Map();
+      this.agentsCacheValid = true;
       return new Map();
     }
   }
 
+  /**
+   * Invalidate the agents cache (call when external changes may have occurred)
+   */
+  invalidateAgentsCache(): void {
+    this.agentsCacheValid = false;
+    this.agentsCache = null;
+  }
+
+  /**
+   * Write agents to localStorage and update cache.
+   * PERFORMANCE: Single localStorage write with cache update.
+   */
+  private persistAgents(agents: Map<string, AgentConfig>): void {
+    const agentsArray = Array.from(agents.values());
+    localStorage.setItem(STORAGE_KEYS.AGENTS, JSON.stringify(agentsArray));
+    // Update cache
+    this.agentsCache = new Map(agents);
+    this.agentsCacheValid = true;
+  }
+
+  /**
+   * Delete an agent from localStorage.
+   * PERFORMANCE: Uses cached agents map to avoid re-parsing.
+   */
   async deleteAgent(id: string): Promise<void> {
     const agents = await this.getAllAgents();
     agents.delete(id);
-
-    const agentsArray = Array.from(agents.values());
-    localStorage.setItem(STORAGE_KEYS.AGENTS, JSON.stringify(agentsArray));
+    this.persistAgents(agents);
 
     // Clear active agent if deleted
     const activeAgentId = localStorage.getItem(STORAGE_KEYS.ACTIVE_AGENT);
@@ -235,6 +284,9 @@ class StorageService {
     localStorage.removeItem(STORAGE_KEYS.AGENTS);
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_AGENT);
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+
+    // Invalidate cache
+    this.invalidateAgentsCache();
 
     // Clear IndexedDB
     await this.initDB();
